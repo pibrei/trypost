@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router, useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import {
     IconCheck,
     IconChevronDown,
@@ -39,12 +39,11 @@ import {
     type MediaImportStarted,
     useMediaImport,
 } from '@/composables/useMediaImport';
-import { useMediaUpload } from '@/composables/useMediaUpload';
+import { mediaUploadLimits, useMediaUpload } from '@/composables/useMediaUpload';
 import { editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute } from '@/lib/mediaType';
 import { store, update } from '@/routes/app/create/ideas';
-import type { MediaUploadLimits, SharedData } from '@/types';
 import {
     columnKey,
     type IdeaDraft,
@@ -80,14 +79,6 @@ const form = useForm({
 const media = ref<MediaItem[]>([...(idea?.media ?? [])]);
 const submittedMediaIds = ref<string[]>([]);
 
-const page = usePage<SharedData>();
-const mediaUploadLimits = (): MediaUploadLimits =>
-    page.props.mediaUploadLimits ?? {
-        max_bytes: { image: 0, video: 0, document: 0 },
-        extensions: { image: [], video: [], document: [] },
-        upload_retention_hours: 0,
-        heic: false,
-    };
 const appendMedia = (
     item: MediaItem,
     _key?: string,

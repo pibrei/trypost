@@ -35,7 +35,6 @@ import {
     effectScope,
     type EffectScope,
     nextTick,
-    onMounted,
     ref,
     shallowReactive,
     watch,
@@ -56,6 +55,7 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import ComposerAccountChip from '@/components/posts/composer/ComposerAccountChip.vue';
 import ComposerAccountOptions from '@/components/posts/composer/ComposerAccountOptions.vue';
 import ComposerAccountStack from '@/components/posts/composer/ComposerAccountStack.vue';
+import ComposerBackConfirmDialog from '@/components/posts/composer/ComposerBackConfirmDialog.vue';
 import ComposerEditorToolbar from '@/components/posts/composer/ComposerEditorToolbar.vue';
 import ComposerLinkCard from '@/components/posts/composer/ComposerLinkCard.vue';
 import ComposerNetworkCard from '@/components/posts/composer/ComposerNetworkCard.vue';
@@ -73,15 +73,6 @@ import ThreadRepliesField from '@/components/posts/editor/ThreadRepliesField.vue
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
-import {
-    AlertDialog,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -111,12 +102,14 @@ import {
     fromAutosaveMedia,
     isExpiredUpload,
     toAutosaveMedia,
+    useAutosavePreview,
     useComposerAutosave,
 } from '@/composables/useComposerAutosave';
 import { useComposerLiveState } from '@/composables/useComposerData';
 import { useComposerTimezone } from '@/composables/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/useComposerUnsavedChanges';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
+import { useLastUsedAccounts } from '@/composables/useLastUsedAccounts';
 import { useLinkCard } from '@/composables/useLinkCard';
 import {
     getMediaValidationWarning,
@@ -131,7 +124,9 @@ import {
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import {
     type MediaUploader,
+    mediaUploadLimits,
     useMediaUpload,
+    withSharedUploads,
 } from '@/composables/useMediaUpload';
 import { usePageErrors } from '@/composables/usePageErrors';
 import {
@@ -172,7 +167,7 @@ import {
     rulesFor,
 } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
-import { acceptAttribute } from '@/lib/mediaType';
+import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
@@ -185,7 +180,6 @@ import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
 import { update as updatePreferences } from '@/routes/app/settings/preferences';
 import type {
-    MediaUploadLimits,
     PinterestBoardsPayload,
     SharedData,
     User,
@@ -398,7 +392,6 @@ useResizeObserver(accountStrip, updateAccountStripFade);
 
 const accountPickerOpen = ref(false);
 const accountSearch = ref('');
-const lastUsedAccountIds = ref<string[]>([]);
 const scheduleMenuOpen = ref(false);
 const schedulePanel = ref<'menu' | 'picker'>('menu');
 
@@ -541,13 +534,6 @@ watch(
     { immediate: true },
 );
 const page = usePage<SharedData>();
-const mediaUploadLimits = (): MediaUploadLimits =>
-    page.props.mediaUploadLimits ?? {
-        max_bytes: { image: 0, video: 0, document: 0 },
-        extensions: { image: [], video: [], document: [] },
-        upload_retention_hours: 0,
-        heic: false,
-    };
 const trayKey = (groupKey: string | null): string =>
     groupKey !== null && customizing.value ? groupKey : '';
 const appendMedia = (
@@ -659,33 +645,6 @@ const uploadScope = effectScope();
 const uploaders = shallowReactive(new Map<string, MediaUploader>());
 const cardUploaders = new Map<string, MediaUploader>();
 const replyUploaders = shallowReactive(new Map<string, MediaUploader>());
-const withSharedUploads = (
-    own: MediaUploader,
-    shared: MediaUploader,
-): MediaUploader => {
-    const owner = (key: string): MediaUploader =>
-        shared.entries.value.some((entry) => entry.key === key) ||
-        shared.imports.value.some((pending) => pending.key === key)
-            ? shared
-            : own;
-
-    return {
-        ...own,
-        entries: computed(() => [
-            ...shared.entries.value,
-            ...own.entries.value,
-        ]),
-        imports: computed(() => [
-            ...shared.imports.value,
-            ...own.imports.value,
-        ]),
-        busy: computed(() => shared.busy.value || own.busy.value),
-        failed: computed(() => shared.failed.value || own.failed.value),
-        retry: (key) => owner(key).retry(key),
-        cancel: (key) => owner(key).cancel(key),
-        remove: (key) => owner(key).remove(key),
-    };
-};
 const createUploader = (key: string): void => {
     if (uploaders.has(key)) return;
     uploadScope.run(() => {
@@ -786,7 +745,6 @@ const mediaUploading = computed(() =>
 const mediaFailed = computed(() =>
     activeUploaders.value.some((uploader) => uploader.failed.value),
 );
-const mediaKey = (item: MediaItem): string => item.upload_token ?? item.id;
 const ownsMediaOverride = (accountId: string): boolean =>
     Object.hasOwn(composition.overrides.value[accountId] ?? {}, 'media');
 type SubmittedMedia = {
@@ -997,38 +955,8 @@ const addLabel = (label: {
     }
     composition.labelIds.value = [...composition.labelIds.value, label.id];
 };
-const filteredAccounts = computed(() => {
-    const query = accountSearch.value.trim().toLocaleLowerCase();
-
-    return query
-        ? props.socialAccounts.filter((account) =>
-              [
-                  account.display_name,
-                  account.username,
-                  getPlatformLabel(account.platform),
-              ].some((value) => (value ?? '').toLocaleLowerCase().includes(query)),
-          )
-        : props.socialAccounts;
-});
-const recentlyUsedAccounts = computed(() =>
-    props.socialAccounts.filter((account) =>
-        lastUsedAccountIds.value.includes(account.id),
-    ),
-);
-onMounted(() => {
-    try {
-        const saved = JSON.parse(
-            localStorage.getItem('trypost:composer:last-used-accounts') ?? '[]',
-        );
-        if (Array.isArray(saved)) {
-            lastUsedAccountIds.value = saved.filter(
-                (id): id is string => typeof id === 'string',
-            );
-        }
-    } catch {
-        lastUsedAccountIds.value = [];
-    }
-});
+const { recentlyUsed: recentlyUsedAccounts, remember: rememberAccounts } =
+    useLastUsedAccounts(() => props.socialAccounts);
 const hasSharedPreview = computed(
     () =>
         Boolean(composition.content.value.trim()) ||
@@ -1835,14 +1763,7 @@ const submit = (
         payload.scheduled_at = scheduledInstant;
         if (isInitialQueueSlot()) payload.queue_slot = scheduledInstant;
     }
-    try {
-        localStorage.setItem(
-            'trypost:composer:last-used-accounts',
-            JSON.stringify(composition.selectedAccountIds.value),
-        );
-    } catch {
-        // Browser storage is optional; publishing must still work without it.
-    }
+    rememberAccounts(composition.selectedAccountIds.value);
     autosave.flush();
     emit('submit', payload, createAnother.value && !props.postId, () => {
         unsavedChanges.markSaved();
@@ -1900,32 +1821,11 @@ const autosave = useComposerAutosave(
         ),
     ),
 );
-const resumeAccounts = computed(() =>
-    (autosave.saved.value?.accountIds ?? []).flatMap((id) => {
-        const account = props.socialAccounts.find(
-            (candidate) => candidate.id === id,
-        );
-
-        return account ? [account] : [];
-    }),
-);
-const resumeMediaCount = computed(
-    () =>
-        (autosave.saved.value?.media ?? []).filter(
-            (item) =>
-                !isExpiredUpload(
-                    item,
-                    mediaUploadLimits().upload_retention_hours,
-                ),
-        ).length,
-);
-const resumePreview = computed(
-    () =>
-        (autosave.saved.value?.content ?? '')
-            .split('\n')
-            .map((line) => line.trim())
-            .find(Boolean) ?? '',
-);
+const {
+    accounts: resumeAccounts,
+    mediaCount: resumeMediaCount,
+    preview: resumePreview,
+} = useAutosavePreview(autosave.saved, () => props.socialAccounts);
 const resumeOpen = ref(
     autosaveEnabled &&
         Boolean(
@@ -2622,7 +2522,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                 <ComposerAccountOptions
                                     v-else
                                     v-model:search="accountSearch"
-                                    :accounts="filteredAccounts"
+                                    :accounts="socialAccounts"
                                     :selected-ids="
                                         composition.selectedAccountIds.value
                                     "
@@ -3594,38 +3494,10 @@ const onDialogOpenChange = (value: boolean): void => {
         @discard="unsavedChanges.discard"
         @keep="unsavedChanges.keepEditing"
     />
-    <AlertDialog v-model:open="confirmingBack">
-        <AlertDialogContent
-            class="gap-0 px-0 pt-6 pb-0 sm:max-w-[512px]"
-            data-testid="composer-back-confirm"
-        >
-            <AlertDialogHeader class="gap-3 px-6 pb-4 text-left">
-                <AlertDialogTitle class="font-sans text-base font-medium">
-                    {{ $t('posts.composer.back_confirm.title') }}
-                </AlertDialogTitle>
-                <AlertDialogDescription class="text-sm text-foreground">
-                    {{ $t('posts.composer.back_confirm.description') }}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter
-                class="mx-2 mb-2"
-            >
-                <AlertDialogCancel
-                    data-testid="composer-back-cancel"
-                >
-                    {{ $t('common.cancel') }}
-                </AlertDialogCancel>
-                <Button
-                    variant="destructive"
-                    size="lg"
-                    data-testid="composer-back-confirm-go"
-                    @click="goBackToSharedStep"
-                >
-                    {{ $t('posts.composer.back_confirm.confirm') }}
-                </Button>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+    <ComposerBackConfirmDialog
+        v-model:open="confirmingBack"
+        @confirm="goBackToSharedStep"
+    />
     <ResumeUnfinishedPostDialog
         :open="resumeOpen"
         :accounts="resumeAccounts"
