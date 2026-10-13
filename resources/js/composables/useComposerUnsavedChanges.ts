@@ -1,16 +1,17 @@
 import { nextTick, ref, watch } from 'vue';
 
+import type { usePostComposition } from '@/composables/usePostComposition';
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import { PostStatus } from '@/types/post';
 
 interface ComposerUnsavedChangesOptions {
     /** Only an edit of a saved post can lose work: a new post is autosaved. */
     editingSavedPost: boolean;
     isOpen: () => boolean;
     isSubmitting: () => boolean;
-    /** Whether everything the snapshot reads has loaded (the post's channels). */
-    isReady: () => boolean;
-    /** What saving would send, as a string to compare. */
-    snapshot: () => string;
+    composition: ReturnType<typeof usePostComposition>;
+    /** The schedule picked in the composer: now, custom, next or top. */
+    scheduleMode: () => string;
 }
 
 /**
@@ -24,16 +25,33 @@ interface ComposerUnsavedChangesOptions {
 export const useComposerUnsavedChanges = (
     options: ComposerUnsavedChangesOptions,
 ) => {
+    const { composition, scheduleMode } = options;
+
+    /** What saving would send, so any change the person makes counts. */
+    const snapshot = (): string => {
+        const mode = scheduleMode();
+
+        return JSON.stringify({
+            submission: composition.materialize(
+                PostStatus.Scheduled,
+                mode === 'next' || mode === 'top' ? mode : null,
+            ),
+            scheduleMode: mode,
+        });
+    };
+
     const opened = ref<string | null>(null);
     const interacted = ref(false);
     const saved = ref(false);
 
     watch(
-        options.isReady,
+        () =>
+            composition.selectedAccounts.value.length ===
+            composition.selectedAccountIds.value.length,
         async (ready) => {
             if (!ready || opened.value !== null) return;
             await nextTick();
-            opened.value = options.snapshot();
+            opened.value = snapshot();
         },
         { immediate: true },
     );
@@ -42,7 +60,7 @@ export const useComposerUnsavedChanges = (
         if (interacted.value) return;
         interacted.value = true;
         if (opened.value !== null) {
-            opened.value = options.snapshot();
+            opened.value = snapshot();
         }
     };
 
@@ -57,7 +75,7 @@ export const useComposerUnsavedChanges = (
         !saved.value &&
         !options.isSubmitting() &&
         opened.value !== null &&
-        options.snapshot() !== opened.value;
+        snapshot() !== opened.value;
 
     return {
         ...useUnsavedChanges(hasUnsavedChanges),

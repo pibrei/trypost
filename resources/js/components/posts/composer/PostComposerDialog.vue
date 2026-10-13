@@ -2056,20 +2056,10 @@ const unsavedChanges = useComposerUnsavedChanges({
     editingSavedPost: Boolean(props.initialPost || props.postId),
     isOpen: () => props.open,
     isSubmitting: () => props.submitting,
-    isReady: () =>
-        composition.selectedAccounts.value.length ===
-        composition.selectedAccountIds.value.length,
-    snapshot: () =>
-        JSON.stringify({
-            submission: composition.materialize(
-                PostStatus.Scheduled,
-                scheduleMode.value === 'next' || scheduleMode.value === 'top'
-                    ? scheduleMode.value
-                    : null,
-            ),
-            scheduleMode: scheduleMode.value,
-        }),
+    composition,
+    scheduleMode: () => scheduleMode.value,
 });
+
 
 const close = (): void =>
     unsavedChanges.guard(() => emit('update:open', false));
