@@ -166,20 +166,22 @@ test('update post merges per-platform meta', function () {
     $post = Post::factory()->forAccount($this->discordAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-        'meta' => ['channel_name' => 'general'],
+        'meta' => ['channel_id' => '444555666', 'channel_name' => 'general'],
     ]);
 
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'meta' => ['channel_id' => '444555666'],
+            'meta' => ['mentions' => [['token' => '@everyone', 'label' => '@everyone']]],
         ]);
 
     $response->assertOk();
 
-    $meta = $post->fresh()->meta;
-    expect($meta['channel_id'])->toBe('444555666')
-        ->and($meta['channel_name'])->toBe('general'); // merged, not overwritten
+    expect($post->fresh()->meta)->toMatchArray([
+        'channel_id' => '444555666',
+        'channel_name' => 'general',
+        'mentions' => [['token' => '@everyone', 'label' => '@everyone']],
+    ]);
 });
 
 test('publish post rejects a Discord platform without a channel', function () {

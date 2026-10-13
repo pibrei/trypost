@@ -154,7 +154,7 @@ class UpdatePost
         $meta = PostMeta::forChannel($channel, array_filter(
             array_merge($post->meta ?? [], data_get($data, 'meta') ?? []),
             fn (mixed $value): bool => $value !== null,
-        ));
+        ), $post->meta ?? []);
         $scheduledAt = match (true) {
             $keepsPending => $post->scheduled_at?->toIso8601String(),
             $position !== null => null,

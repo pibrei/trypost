@@ -1562,3 +1562,18 @@ test('instagram via facebook verify asks for no user_id, which a page token does
         ->and(data_get($account->fresh()->meta, 'ig_user_id'))->toBeNull();
     Http::assertSent(fn ($request): bool => str_contains($request->url(), 'fields=id%2Cusername&'));
 });
+
+test('remembering the instagram account id keeps meta saved meanwhile by a reconnect', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => 'app-scoped-1', 'username' => 'trypost', 'user_id' => '17841400000000001']),
+    ]);
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+        'meta' => ['username' => 'trypost'],
+    ]);
+    SocialAccount::query()->whereKey($account->id)->update(['meta->account_type' => 'BUSINESS']);
+
+    (new ConnectionVerifier)->verify($account);
+
+    expect($account->fresh()->meta)->toEqual(['username' => 'trypost', 'account_type' => 'BUSINESS', 'ig_user_id' => '17841400000000001']);
+});

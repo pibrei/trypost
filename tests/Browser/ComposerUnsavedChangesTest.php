@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
+use Mockery\MockInterface;
 
 function seedUnsavedChangesReel(): Post
 {
@@ -113,7 +114,10 @@ test('closing an untouched post of any network asks nothing, even when its setti
         'content' => 'Untouched post',
         'meta' => $meta,
     ]);
-    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+    $this->mock(DiscordClient::class, function (MockInterface $discord): void {
+        $discord->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+        $discord->shouldReceive('cachedChannels')->andReturnNull();
+    });
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
@@ -186,7 +190,10 @@ test('picking a discord channel stores its name for the preview', function () {
         'content' => 'Release notes',
         'meta' => [],
     ]);
-    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+    $this->mock(DiscordClient::class, function (MockInterface $discord): void {
+        $discord->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+        $discord->shouldReceive('cachedChannels')->andReturnNull();
+    });
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
@@ -453,7 +460,10 @@ test('a discord channel missing from the list keeps its stored name', function (
         'content' => 'Release notes',
         'meta' => ['channel_id' => '999', 'channel_name' => 'announcements'],
     ]);
-    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+    $this->mock(DiscordClient::class, function (MockInterface $discord): void {
+        $discord->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+        $discord->shouldReceive('cachedChannels')->andReturnNull();
+    });
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);

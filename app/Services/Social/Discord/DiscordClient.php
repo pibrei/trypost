@@ -48,6 +48,19 @@ class DiscordClient
      *                                      callers (e.g. the publish-time channel guard) retry instead of
      *                                      treating an empty result as "channel not found".
      */
+    /**
+     * The guild's channels when a recent `channels()` call left them in the
+     * cache, without asking Discord: null when they are not cached.
+     *
+     * @return list<array{id: string, name: string}>|null
+     */
+    public function cachedChannels(string $guildId): ?array
+    {
+        $channels = Cache::get("discord:channels:{$guildId}");
+
+        return is_array($channels) ? $channels : null;
+    }
+
     public function channels(string $guildId): array
     {
         // Cached per guild for 5 minutes — channels change rarely and this runs

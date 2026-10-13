@@ -32,7 +32,7 @@ class InstagramAudio
     {
         $key = "instagram-audio:{$account->workspace_id}";
 
-        if (! RateLimiter::attempt($key, self::LOOKUPS_PER_MINUTE, fn (): bool => true, 60)) {
+        if (RateLimiter::hit($key, 60) > self::LOOKUPS_PER_MINUTE) {
             throw new ThrottleRequestsException(
                 __('posts.form.instagram.music.too_many_searches'),
                 headers: ['Retry-After' => RateLimiter::availableIn($key)],

@@ -44,6 +44,7 @@ class InstagramAudioController extends Controller
     private function lookup(SocialAccount $account, Closure $lookup): mixed
     {
         $this->authorize('view', $account);
+        $this->authorize('createPost', $account->workspace);
 
         if (! in_array($account->platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
             return response()->json(

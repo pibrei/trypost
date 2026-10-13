@@ -520,9 +520,6 @@ class PostPlatformMetaRules
     }
 
     /**
-     * @return array{0: string, 1: string}|null
-     */
-    /**
      * Music needs an Instagram account connected through Facebook, and
      * Instagram refuses a trial reel that has collaborators.
      *
@@ -537,6 +534,9 @@ class PostPlatformMetaRules
         };
     }
 
+    /**
+     * @return array{0: string, 1: string}|null
+     */
     private static function tiktokPrivacyViolation(mixed $meta): ?array
     {
         $privacyLevel = PrivacyLevel::tryFrom((string) data_get($meta, 'privacy_level'));

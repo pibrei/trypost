@@ -5,13 +5,13 @@ declare(strict_types=1);
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Exceptions\PlatformUnavailableException;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use Mockery\MockInterface;
 
 beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
@@ -52,10 +52,13 @@ function discordChannelNameUpdate(string $surface, Post $post, array $meta): voi
 }
 
 test('a discord post created or edited with only the channel id stores its name on the web, api and mcp', function (string $surface) {
-    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturn([
-        ['id' => '111', 'name' => 'general'],
-        ['id' => '222', 'name' => 'announcements'],
-    ]);
+    $this->mock(DiscordClient::class, function (MockInterface $discord): void {
+        $discord->shouldReceive('cachedChannels')->andReturn([
+            ['id' => '111', 'name' => 'general'],
+            ['id' => '222', 'name' => 'announcements'],
+        ]);
+        $discord->shouldNotReceive('channels');
+    });
 
     $post = discordChannelNameCreate($surface, ['channel_id' => '111']);
     expect(data_get($post->meta, 'channel_name'))->toBe('general');
@@ -65,16 +68,19 @@ test('a discord post created or edited with only the channel id stores its name 
     expect(data_get($post->fresh()->meta, 'channel_name'))->toBe('announcements');
 })->with(['web', 'api', 'mcp']);
 
-test('a discord channel name sent by the client is replaced by the server list name', function (string $surface) {
-    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general']]);
+test('a discord channel name sent by the client is replaced by the cached list name', function (string $surface) {
+    $this->mock(DiscordClient::class)->shouldReceive('cachedChannels')->andReturn([['id' => '111', 'name' => 'general']]);
 
     $post = discordChannelNameCreate($surface, ['channel_id' => '111', 'channel_name' => 'stale']);
 
     expect(data_get($post->meta, 'channel_name'))->toBe('general');
 })->with(['web', 'api', 'mcp']);
 
-test('a discord channel missing from the list or a failing lookup keeps the stored name and still saves', function (string $surface, Closure $channels) {
-    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturnUsing($channels);
+test('without the channel in the cached list a discord post keeps its name for the same channel and drops it for another one', function (string $surface, ?array $cached) {
+    $this->mock(DiscordClient::class, function (MockInterface $discord) use ($cached): void {
+        $discord->shouldReceive('cachedChannels')->andReturn($cached);
+        $discord->shouldNotReceive('channels');
+    });
     $post = Post::factory()->forAccount($this->discord, ContentType::DiscordMessage)->create([
         'user_id' => $this->user->id,
         'content' => 'Release notes',
@@ -82,15 +88,19 @@ test('a discord channel missing from the list or a failing lookup keeps the stor
     ]);
 
     discordChannelNameUpdate($surface, $post, ['channel_id' => '999']);
-
     expect($post->fresh()->meta)->toMatchArray(['channel_id' => '999', 'channel_name' => 'old-channel']);
+
+    auth()->forgetGuards();
+    discordChannelNameUpdate($surface, $post, ['channel_id' => '888']);
+    expect($post->fresh()->meta)->toHaveKey('channel_id', '888')
+        ->not->toHaveKey('channel_name');
 })->with(['web', 'api', 'mcp'])->with([
-    'channel not in the list' => [fn () => fn (): array => [['id' => '111', 'name' => 'general']]],
-    'discord unavailable' => [fn () => fn (): never => throw new PlatformUnavailableException('Discord channel lookup failed (500).', 500)],
+    'channel not in the cached list' => [[['id' => '111', 'name' => 'general']]],
+    'no cached list' => [null],
 ]);
 
 test('only discord posts look up a channel name', function () {
-    $this->mock(DiscordClient::class)->shouldNotReceive('channels');
+    $this->mock(DiscordClient::class)->shouldNotReceive('cachedChannels');
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), [
