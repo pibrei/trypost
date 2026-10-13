@@ -115,6 +115,7 @@ import {
 } from '@/composables/useComposerAutosave';
 import { useComposerLiveState } from '@/composables/useComposerData';
 import { useComposerTimezone } from '@/composables/useComposerTimezone';
+import { useComposerUnsavedChanges } from '@/composables/useComposerUnsavedChanges';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useLinkCard } from '@/composables/useLinkCard';
 import {
@@ -147,7 +148,7 @@ import {
     type NetworkGroup,
     type PostComposition,
 } from '@/composables/usePostComposition';
-import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import { useSaveAndLinkFacebook } from '@/composables/useSaveAndLinkFacebook';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
@@ -1082,8 +1083,7 @@ const assistantChannel = computed<AssistantChannel | null>(() => {
         limit: typeof limit === 'number' ? limit : null,
     };
 });
-const { open: openConnectDialog, openAt: openConnectStep } =
-    useConnectChannelDialog();
+const { open: openConnectDialog } = useConnectChannelDialog();
 
 const canSubmit = computed(
     () =>
@@ -1845,7 +1845,7 @@ const submit = (
     }
     autosave.flush();
     emit('submit', payload, createAnother.value && !props.postId, () => {
-        saved.value = true;
+        unsavedChanges.markSaved();
         onSaved?.();
     });
 
@@ -1856,35 +1856,11 @@ const submitDraft = (): void => {
     submit(PostStatus.Draft);
 };
 
-const saveAndLinkFacebook = (account: ComposerAccount): void => {
-    const linkFacebook = (): void =>
-        openConnectStep('instagram-facebook', account.id);
-    const status = props.initialPost?.status;
-
-    if (status === PostStatus.PendingApproval && !requiresApproval.value) {
-        toast.error(trans('posts.form.instagram.music.save_and_link_pending'), {
-            testId: 'instagram-music-save-and-link-pending',
-        });
-
-        return;
-    }
-
-    const keepsSchedule =
-        (status === PostStatus.Scheduled ||
-            status === PostStatus.PendingApproval) &&
-        scheduleMode.value !== 'now';
-
-    const submitted = submit(
-        keepsSchedule ? PostStatus.Scheduled : PostStatus.Draft,
-        linkFacebook,
-    );
-
-    if (!submitted) {
-        toast.error(trans('posts.form.instagram.music.save_and_link_blocked'), {
-            testId: 'instagram-music-save-and-link-blocked',
-        });
-    }
-};
+const saveAndLinkFacebook = useSaveAndLinkFacebook({
+    status: () => props.initialPost?.status,
+    publishesNow: () => scheduleMode.value === 'now',
+    submit,
+});
 
 const submitSelectedSchedule = (): void => {
     submit(
@@ -2076,66 +2052,24 @@ const discardUnfinishedPost = (): void => {
     resumeOpen.value = false;
 };
 
-const editingSavedPost = Boolean(props.initialPost || props.postId);
-const saved = ref(false);
-const openedSnapshot = ref<string | null>(null);
-
-const editSnapshot = (): string =>
-    JSON.stringify({
-        submission: composition.materialize(
-            PostStatus.Scheduled,
-            scheduleMode.value === 'next' || scheduleMode.value === 'top'
-                ? scheduleMode.value
-                : null,
-        ),
-        scheduleMode: scheduleMode.value,
-    });
-
-const selectedAccountsLoaded = computed(
-    () =>
+const unsavedChanges = useComposerUnsavedChanges({
+    editingSavedPost: Boolean(props.initialPost || props.postId),
+    isOpen: () => props.open,
+    isSubmitting: () => props.submitting,
+    isReady: () =>
         composition.selectedAccounts.value.length ===
         composition.selectedAccountIds.value.length,
-);
-
-watch(
-    selectedAccountsLoaded,
-    async (loaded) => {
-        if (!loaded || openedSnapshot.value !== null) return;
-        await nextTick();
-        openedSnapshot.value = editSnapshot();
-    },
-    { immediate: true },
-);
-
-/**
- * Settings fill some values in on their own once their data loads (a renewed
- * music cover, the TikTok creator's limits), so the opened state is taken
- * again at the person's first interaction and nothing counts before it.
- */
-const interacted = ref(false);
-
-const markInteracted = (): void => {
-    if (interacted.value) return;
-    interacted.value = true;
-    if (openedSnapshot.value !== null) {
-        openedSnapshot.value = editSnapshot();
-    }
-};
-
-/**
- * Only an edit of a saved post can lose work: a new post is autosaved and
- * offered back the next time the composer opens.
- */
-const hasUnsavedChanges = (): boolean =>
-    editingSavedPost &&
-    props.open &&
-    interacted.value &&
-    !saved.value &&
-    !props.submitting &&
-    openedSnapshot.value !== null &&
-    editSnapshot() !== openedSnapshot.value;
-
-const unsavedChanges = useUnsavedChanges(hasUnsavedChanges);
+    snapshot: () =>
+        JSON.stringify({
+            submission: composition.materialize(
+                PostStatus.Scheduled,
+                scheduleMode.value === 'next' || scheduleMode.value === 'top'
+                    ? scheduleMode.value
+                    : null,
+            ),
+            scheduleMode: scheduleMode.value,
+        }),
+});
 
 const close = (): void =>
     unsavedChanges.guard(() => emit('update:open', false));
@@ -2366,10 +2300,10 @@ const onDialogOpenChange = (value: boolean): void => {
             :aria-describedby="undefined"
             data-testid="post-composer-dialog"
             :disable-outside-pointer-events="!isGooglePickerOpen"
-            @pointerdown.capture="markInteracted"
-            @keydown.capture="markInteracted"
-            @paste.capture="markInteracted"
-            @dragenter.capture="markInteracted"
+            @pointerdown.capture="unsavedChanges.markInteracted"
+            @keydown.capture="unsavedChanges.markInteracted"
+            @paste.capture="unsavedChanges.markInteracted"
+            @dragenter.capture="unsavedChanges.markInteracted"
             @interact-outside="isGooglePickerOpen && $event.preventDefault()"
         >
             <input
@@ -3300,7 +3234,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         "
                                         @link-facebook="
                                             saveAndLinkFacebook(
-                                                group.anchor,
+                                                group.anchor.id,
                                             )
                                         "
                                     />
