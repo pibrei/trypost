@@ -236,3 +236,18 @@ test('instagram audio refuses lookups past the workspace allowance on the api an
 
     Http::assertNothingSent();
 });
+
+test('instagram audio refuses an id that is not a number and a search that is too long on the web, api and mcp', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::InstagramFacebook]);
+    Http::fake();
+
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.show', [$instagram, 'not-a-number']))->assertNotFound();
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.index', [$instagram, 'q' => str_repeat('a', 101)]))->assertUnprocessable()->assertJsonValidationErrors('q');
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio.show', [$instagram, 'not-a-number']))->assertNotFound();
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio', [$instagram, 'q' => str_repeat('a', 101)]))->assertUnprocessable()->assertJsonValidationErrors('q');
+    TryPostServer::actingAs($this->user)->tool(GetInstagramAudioTool::class, ['account_id' => $instagram->id, 'audio_id' => 'not-a-number'])->assertHasErrors();
+    TryPostServer::actingAs($this->user)->tool(SearchInstagramAudioTool::class, ['account_id' => $instagram->id, 'q' => str_repeat('a', 101)])->assertHasErrors();
+
+    Http::assertNothingSent();
+});

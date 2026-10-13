@@ -1351,8 +1351,51 @@ it('ignores instagram reel-only meta on a feed post', function (Platform $platfo
             'status' => PostStatus::Scheduled->value,
             'scheduled_at' => now()->addDay()->toIso8601String(),
         ])
-        ->assertJsonMissingValidationErrors(['meta.audio', 'meta.trial_graduation']);
+        ->assertOk();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
 })->with([
     'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => 'audio-1']]],
     'trial with collaborators' => [Platform::InstagramFacebook, ['collaborators' => ['alice'], 'trial_graduation' => 'MANUAL']],
+]);
+
+it('refuses scheduling a new instagram login reel with music, alone and in a batch', function (string $route, array $payload, string $error) {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+    $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->video()->create();
+    $destination = [
+        'social_account_id' => $instagram->id,
+        'content_type' => ContentType::InstagramReel->value,
+        'meta' => ['audio' => ['id' => 'audio-1']],
+    ];
+
+    $this->withHeaders($this->headers)
+        ->postJson(route($route), [
+            'content' => 'Reel',
+            'status' => PostStatus::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'media' => [['upload_token' => $upload->upload_token]],
+            ...($payload === [] ? $destination : ['destinations' => [$destination]]),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([$error => __('posts.form.instagram.music.requires_facebook')]);
+
+    expect(Post::query()->where('social_account_id', $instagram->id)->exists())->toBeFalse();
+})->with([
+    'single post' => ['api.posts.store', [], 'meta.audio'],
+    'batch' => ['api.posts.batch.store', ['batch' => true], 'destinations.0.meta.audio'],
+]);
+
+it('refuses music volumes outside 0 to 100 and a cover that is not a link', function (array $audio, string $error) {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::InstagramFacebook]);
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Reel',
+        'social_account_id' => $instagram->id,
+        'content_type' => ContentType::InstagramReel->value,
+        'meta' => ['audio' => ['id' => 'audio-1', ...$audio]],
+    ])->assertUnprocessable()->assertJsonValidationErrors($error);
+})->with([
+    'music volume above 100' => [['audio_volume' => 101], 'meta.audio.audio_volume'],
+    'video volume below 0' => [['video_volume' => -1], 'meta.audio.video_volume'],
+    'cover not a link' => [['cover_url' => 'not a link'], 'meta.audio.cover_url'],
 ]);

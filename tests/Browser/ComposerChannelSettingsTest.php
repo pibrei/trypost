@@ -1525,3 +1525,24 @@ test('a trial reel shows its explanation under the options and its badge on the 
         ->assertSeeIn('@instagram-preview-trial', __('posts.form.instagram.trial_reel.badge'))
         ->assertNoJavaScriptErrors();
 });
+
+test('collaborators added on the instagram card are saved with the post', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-collaborator-input');
+    $page->type('@instagram-collaborator-input', '@alice')
+        ->keys('@instagram-collaborator-input', 'Enter');
+    waitForChannelSettingsTestId($page, 'instagram-collaborators-notice');
+    $page->click('@instagram-collaborators-notice-dismiss')
+        ->type('@instagram-collaborator-input', 'bob')
+        ->click('@instagram-collaborator-add');
+    waitForChannelSettingsTestId($page, 'instagram-collaborator-bob');
+
+    $page->click('@composer-save-draft');
+    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice', 'bob']);
+});

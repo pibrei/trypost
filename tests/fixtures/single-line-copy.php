@@ -53,6 +53,7 @@ return [
     'channels.grid.title' => 10,
     'channels.settings_page.cancel' => 9,
     'channels.settings_page.timezone_confirm' => 22,
+    'common.unsaved_changes.discard' => 17,
     'create.tabs.feeds' => 10,
     'create.tabs.ideas' => 8,
     'create.tabs.templates' => 10,

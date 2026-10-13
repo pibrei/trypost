@@ -605,3 +605,22 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a draft without a channel shows no add to queue button', function () {
+    [$user, $workspace] = publishPageSetup();
+    $draft = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'content' => 'Draft without a channel',
+        'status' => PostStatus::Draft,
+    ]);
+    $draft->forceFill(['social_account_id' => null, 'platform' => null, 'content_type' => null])->save();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitForPublishPageTestId($page, "post-card-{$draft->id}");
+
+    $page->assertVisible("@post-card-{$draft->id}")
+        ->assertMissing("@post-add-to-queue-{$draft->id}")
+        ->assertNoJavaScriptErrors();
+});
