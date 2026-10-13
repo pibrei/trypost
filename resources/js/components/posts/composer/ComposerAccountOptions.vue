@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ComposerAccount } from '@/composables/usePostComposition';
+import { matchesSearch } from '@/lib/search';
 
 const props = defineProps<{
     accounts: ComposerAccount[];
@@ -18,20 +19,15 @@ const emit = defineEmits<{
     (event: 'toggle-all', accounts: ComposerAccount[]): void;
 }>();
 
-const searchableText = (account: ComposerAccount): string =>
-    [account.display_name, account.username, getPlatformLabel(account.platform)]
-        .join(' ')
-        .toLocaleLowerCase();
-
-const visibleAccounts = computed(() => {
-    const query = search.value.trim().toLocaleLowerCase();
-
-    if (!query) return props.accounts;
-
-    return props.accounts.filter((account) =>
-        searchableText(account).includes(query),
-    );
-});
+const visibleAccounts = computed(() =>
+    props.accounts.filter((account) =>
+        matchesSearch(search.value, [
+            account.display_name,
+            account.username,
+            getPlatformLabel(account.platform),
+        ]),
+    ),
+);
 
 const isSelected = (account: ComposerAccount): boolean =>
     props.selectedIds.includes(account.id);

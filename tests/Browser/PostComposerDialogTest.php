@@ -1380,3 +1380,30 @@ test('the composer channel search finds channels by network name, even one witho
         ->assertMissing("@composer-account-option-{$linkedin->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('the channel search ignores accents and matches each word in any field', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram, 'display_name' => 'São Paulo Café', 'username' => 'spcafe']);
+    $x = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X, 'display_name' => 'Agência Norte', 'username' => 'norte']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    waitForComposerReady($page);
+    $page->click('@composer-add-account')
+        ->fill('@composer-account-search', 'sao paulo')
+        ->assertVisible("@composer-account-option-{$instagram->id}")
+        ->assertMissing("@composer-account-option-{$x->id}")
+        ->fill('@composer-account-search', 'agencia x')
+        ->assertVisible("@composer-account-option-{$x->id}")
+        ->assertMissing("@composer-account-option-{$instagram->id}")
+        ->fill('@composer-account-search', 'cafe x')
+        ->assertMissing("@composer-account-option-{$instagram->id}")
+        ->assertMissing("@composer-account-option-{$x->id}")
+        ->fill('@composer-account-search', '')
+        ->assertVisible("@composer-account-option-{$instagram->id}")
+        ->assertVisible("@composer-account-option-{$x->id}")
+        ->assertNoJavaScriptErrors();
+});
