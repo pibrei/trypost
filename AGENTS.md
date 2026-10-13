@@ -742,6 +742,16 @@ Never derive the first-use state from the list or from the search box. A paginat
 - **Requests are independent.** Every FormRequest (web under `App/`, API under `Api/`) and every MCP tool declares its own rules inline. Do not create a shared rules helper (e.g. `ChannelRequestRules::reorderQueue()`) for requests or tools to call, and do not make one request delegate its rules to another. Web, API and MCP agreeing is proven by the parity tests in `tests/Feature/Parity`, not by sharing a rules class. Domain rules that already exist as their own concept (`PostPlatformMetaRules`, `PostMediaRules`, `PostStatusRules`, `App\Rules\*` rule objects) stay shared.
     - The classes under `app/Support/Requests/**` predate this rule and will be refactored away; do not add to them or copy their pattern.
 
+## Controllers: one per resource, mirrored on web and API
+
+A controller serves **one resource**. Network-specific endpoints never pile up in a generic controller: in October 2026 `Api\SocialAccountController` had grown to hold Pinterest boards, Discord channels, TikTok creator info, Instagram audio, the posting schedule and the queue slots, and was split (owner decision). Do not let it happen again.
+
+- **One controller per resource**, with resourceful method names (`index`, `show`, `store`, `update`, `destroy`, plus a few named verbs where REST has none, e.g. `generate`, `copy`, `reorder`, `moveToSlot`). A new network feature gets its own controller; it is never added as `pinterestBoards()` / `instagramAudio()` methods on `SocialAccountController` or any other controller.
+- **The web and the API mirror each other.** The same resource has the same controller name on both sides: `App\InstagramAudioController` ↔ `Api\InstagramAudioController`, `App\PinterestBoardController` ↔ `Api\PinterestBoardController`, `App\DiscordController` ↔ `Api\DiscordController`, `App\ChannelPostingScheduleController` ↔ `Api\ChannelPostingScheduleController`. When one side gains an endpoint, the other side's endpoint for the same resource goes in the controller with the same name.
+- **Channel features belong to their channel controller**: posting schedule reads and writes in `ChannelPostingScheduleController`, queue slots and ordering in `ChannelQueueController`, insights in `ChannelInsightsController`. `Api\SocialAccountController` only lists the connected accounts.
+- **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
+- Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
+
 ## Database engines (PostgreSQL + MySQL)
 
 TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hosted install may pick either. Every query, migration, and test must work on both — the suite is expected to be green on each.
