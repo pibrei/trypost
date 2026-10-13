@@ -1,18 +1,25 @@
 import {
+    computed,
+    inject,
+    provide,
     readonly,
     ref,
+    watch,
     type ComputedRef,
     type InjectionKey,
+    type Ref,
 } from 'vue';
 
+import type { InstagramAudio } from '@/types/instagram';
+
 /** What a reel preview tells its video about the soundtrack picked in the composer. */
-export interface PreviewSoundtrack {
+interface PreviewSoundtrack {
     playing: ComputedRef<boolean>;
     videoVolume: ComputedRef<number>;
     stop: () => void;
 }
 
-export const PREVIEW_SOUNDTRACK: InjectionKey<PreviewSoundtrack> =
+const PREVIEW_SOUNDTRACK: InjectionKey<PreviewSoundtrack> =
     Symbol('previewSoundtrack');
 
 const playingAudioId = ref<string | null>(null);
@@ -56,3 +63,73 @@ export const useReelSoundtrack = () => ({
     stop,
     setVolume,
 });
+
+/** The picked track as the reel preview names it: title and artist. */
+export const soundtrackLabel = (
+    audio: InstagramAudio | null | undefined,
+): string | null =>
+    audio?.id
+        ? [audio.title, audio.artist].filter(Boolean).join(' · ') || null
+        : null;
+
+/**
+ * Lets the reel preview's video follow the post's picked track: it plays
+ * while that track plays, at the chosen video volume.
+ */
+export const providePreviewSoundtrack = (
+    audio: () => InstagramAudio | null,
+): void => {
+    provide(PREVIEW_SOUNDTRACK, {
+        playing: computed(
+            () =>
+                Boolean(audio()?.id) && playingAudioId.value === audio()?.id,
+        ),
+        videoVolume: computed(() => (audio()?.video_volume ?? 100) / 100),
+        stop,
+    });
+};
+
+/**
+ * Plays a preview video along with the soundtrack its reel provides, and
+ * stops the soundtrack when the video is paused. Outside a reel preview it
+ * does nothing.
+ *
+ * @returns what to call when the video pauses
+ */
+export const useSoundtrackVideo = (
+    video: Ref<HTMLVideoElement | null>,
+): (() => void) => {
+    const soundtrack = inject(PREVIEW_SOUNDTRACK, null);
+
+    watch(
+        () => soundtrack?.playing.value ?? false,
+        (playing) => {
+            const element = video.value;
+            if (!element) return;
+            if (!playing) {
+                element.pause();
+                return;
+            }
+            element.currentTime = 0;
+            element.volume = soundtrack?.videoVolume.value ?? 1;
+            void element.play().catch((error: unknown) => {
+                if ((error as DOMException)?.name !== 'AbortError') {
+                    soundtrack?.stop();
+                }
+            });
+        },
+    );
+
+    watch(
+        () => soundtrack?.videoVolume.value,
+        (volume) => {
+            if (video.value && volume !== undefined) {
+                video.value.volume = volume;
+            }
+        },
+    );
+
+    return (): void => {
+        if (soundtrack?.playing.value) soundtrack.stop();
+    };
+};

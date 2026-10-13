@@ -1546,3 +1546,42 @@ test('collaborators added on the instagram card are saved with the post', functi
     $page->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice', 'bob']);
 });
+
+test('playing the picked track plays the reel preview video at the chosen video volume', function () {
+    fakeChannelSettingsApis();
+    $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];
+    $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel, $video);
+    $post->update(['meta' => ['audio' => [
+        'id' => 'audio-1',
+        'title' => 'Summer Song',
+        'artist' => 'The Band',
+        'preview_url' => 'https://example.com/preview.mp3',
+        'video_volume' => 30,
+    ]]]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-music-selected-preview');
+    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-reel-preview\"] video')");
+    $page->script(<<<'JS'
+        (() => {
+            const where = (media, suffix = '') => `${media.closest?.('[data-testid="instagram-reel-preview"]') ? 'PREVIEW' : media.tagName}${suffix}`;
+            window.__played = [];
+            HTMLMediaElement.prototype.play = function () { window.__played.push(where(this)); return Promise.resolve(); };
+            HTMLMediaElement.prototype.pause = function () { window.__played.push(where(this, ':paused')); };
+            return true;
+        })()
+    JS);
+
+    $page->assertSeeIn('@instagram-preview-audio', 'Summer Song · The Band')
+        ->click('@instagram-music-selected-preview');
+    waitForChannelSettingsCondition($page, "window.__played.includes('PREVIEW')");
+
+    expect($page->script("window.__played.includes('AUDIO') && window.__played.includes('PREVIEW')"))->toBeTrue()
+        ->and($page->script("Math.round(document.querySelector('[data-testid=\"instagram-reel-preview\"] video').volume * 100)"))->toBe(30);
+
+    $page->click('@instagram-music-selected-preview');
+    waitForChannelSettingsCondition($page, "window.__played.includes('PREVIEW:paused')");
+
+    expect($page->script("window.__played.includes('PREVIEW:paused')"))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});

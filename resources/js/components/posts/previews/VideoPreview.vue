@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { IconPlayerPlayFilled } from '@tabler/icons-vue';
-import { inject, ref, watch } from 'vue';
+import { ref } from 'vue';
 
-import { PREVIEW_SOUNDTRACK } from '@/composables/useReelSoundtrack';
+import { useSoundtrackVideo } from '@/composables/useReelSoundtrack';
 
 const props = withDefaults(
     defineProps<{
@@ -21,40 +21,12 @@ const markPlaying = (): void => {
     isPlaying.value = true;
 };
 
-const soundtrack = inject(PREVIEW_SOUNDTRACK, null);
+const stopSoundtrack = useSoundtrackVideo(videoRef);
 
 const markPaused = (): void => {
     isPlaying.value = false;
-    if (soundtrack?.playing.value) soundtrack.stop();
+    stopSoundtrack();
 };
-
-watch(
-    () => soundtrack?.playing.value ?? false,
-    (playing) => {
-        const el = videoRef.value;
-        if (!el) return;
-        if (playing) {
-            el.currentTime = 0;
-            el.volume = soundtrack?.videoVolume.value ?? 1;
-            void el.play().catch((error: unknown) => {
-                if ((error as DOMException)?.name !== 'AbortError') {
-                    soundtrack?.stop();
-                }
-            });
-        } else {
-            el.pause();
-        }
-    },
-);
-
-watch(
-    () => soundtrack?.videoVolume.value,
-    (volume) => {
-        if (videoRef.value && volume !== undefined) {
-            videoRef.value.volume = volume;
-        }
-    },
-);
 
 const toggle = () => {
     const el = videoRef.value;

@@ -11,7 +11,7 @@ import {
     IconRepeat,
     IconSend,
 } from '@tabler/icons-vue';
-import { computed, provide } from 'vue';
+import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
@@ -19,8 +19,8 @@ import PreviewStoryHeader from '@/components/posts/previews/PreviewStoryHeader.v
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
 import PreviewVerticalCard from '@/components/posts/previews/PreviewVerticalCard.vue';
 import {
-    PREVIEW_SOUNDTRACK,
-    useReelSoundtrack,
+    providePreviewSoundtrack,
+    soundtrackLabel,
 } from '@/composables/useReelSoundtrack';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
@@ -39,31 +39,11 @@ const selectedAudio = computed(
     () => (props.meta?.audio as InstagramAudio | null | undefined) ?? null,
 );
 
-const audioLabel = computed((): string | null => {
-    const audio = selectedAudio.value;
-
-    if (!audio?.id) {
-        return null;
-    }
-
-    return [audio.title, audio.artist].filter(Boolean).join(' · ') || null;
-});
+const audioLabel = computed(() => soundtrackLabel(selectedAudio.value));
 
 const isTrialReel = computed(() => Boolean(props.meta?.trial_graduation));
 
-const soundtrack = useReelSoundtrack();
-
-provide(PREVIEW_SOUNDTRACK, {
-    playing: computed(
-        () =>
-            Boolean(selectedAudio.value?.id) &&
-            soundtrack.playingAudioId.value === selectedAudio.value?.id,
-    ),
-    videoVolume: computed(
-        () => (selectedAudio.value?.video_volume ?? 100) / 100,
-    ),
-    stop: soundtrack.stop,
-});
+providePreviewSoundtrack(() => selectedAudio.value);
 
 const CAPTION_LIMIT = 100;
 
