@@ -516,3 +516,25 @@ test('discarding after back closes a post opened straight from a link, with no p
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
 });
+
+test('clicking outside an edited post asks first', function () {
+    $post = seedUnsavedChangesReel();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->click('@instagram-share-to-feed');
+    $page->script(<<<'JS'
+        (() => {
+            const outside = document.elementFromPoint(5, 5);
+            const options = { bubbles: true, cancelable: true, clientX: 5, clientY: 5, pointerType: 'mouse', button: 0 };
+            outside.dispatchEvent(new PointerEvent('pointerdown', options));
+            outside.dispatchEvent(new PointerEvent('pointerup', options));
+            outside.dispatchEvent(new MouseEvent('click', options));
+        })()
+    JS);
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+
+    $page->assertVisible('@unsaved-changes-dialog')
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});

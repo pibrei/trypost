@@ -893,6 +893,8 @@ test('post notes open after creation while the edit dialog still has its AI assi
     $page = visit(route('app.posts.index', ['notes' => $post->id, 'note' => $note->id]));
     $page->assertVisible("@post-notes-trigger-{$post->id}")
         ->assertSee('Please review the opening line');
+    waitForComposerCondition($page, "document.querySelector('[data-note-id=\"{$note->id}\"]')?.classList.contains('bg-primary-subtle')");
+    $page->assertScript("document.querySelector('[data-note-id=\"{$note->id}\"]').classList.contains('bg-primary-subtle')", true);
     expect($page->script("document.querySelector('[data-testid=\"post-notes-trigger-{$post->id}\"]').textContent.replace(/\\s+/g, ' ').trim()"))->toBe(__('notes.title').' 1');
 
     $layout = $page->script(<<<'JS'
@@ -1405,5 +1407,36 @@ test('the channel search ignores accents and matches each word in any field', fu
         ->fill('@composer-account-search', '')
         ->assertVisible("@composer-account-option-{$instagram->id}")
         ->assertVisible("@composer-account-option-{$x->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('select all picks only the channels the search shows, and the last used shortcut brings back the previous post channels', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram, 'display_name' => 'Studio']);
+    $x = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X, 'display_name' => 'Studio']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    waitForComposerReady($page);
+    $page->click('@composer-add-account')
+        ->fill('@composer-account-search', 'instagram')
+        ->click('@composer-select-all')
+        ->assertVisible("@composer-account-{$instagram->id}")
+        ->assertMissing("@composer-account-{$x->id}")
+        ->fill('@composer-account-search', '')
+        ->keys('@composer-account-search', 'Escape')
+        ->fill("@composer-caption-{$instagram->id}", 'First post')
+        ->click('@composer-save-draft');
+    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    waitForComposerReady($page, 'posts-new-post');
+    $page->click('@posts-new-post');
+    waitForComposerReady($page, 'composer-last-used');
+    $page->click('@composer-last-used')
+        ->assertVisible("@composer-account-{$instagram->id}")
+        ->assertMissing("@composer-account-{$x->id}")
         ->assertNoJavaScriptErrors();
 });
