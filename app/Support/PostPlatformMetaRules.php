@@ -392,13 +392,7 @@ class PostPlatformMetaRules
         return match (true) {
             $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? self::formatViolation($platform, $meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
-            $isInstagramReel
-                && $platform === Platform::Instagram
-                && filled(data_get($meta, 'audio.id')) => ['audio', trans('posts.form.instagram.music.requires_facebook')],
-            $isInstagramReel
-                && in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)
-                && filled(data_get($meta, 'trial_graduation'))
-                && filled(data_get($meta, 'collaborators')) => ['trial_graduation', trans('posts.form.instagram.trial_reel.no_collaborators')],
+            $isInstagramReel => self::instagramReelViolation($platform, $meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             $needsGoogleBusinessEvent
@@ -528,6 +522,21 @@ class PostPlatformMetaRules
     /**
      * @return array{0: string, 1: string}|null
      */
+    /**
+     * Music needs an Instagram account connected through Facebook, and
+     * Instagram refuses a trial reel that has collaborators.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private static function instagramReelViolation(?Platform $platform, mixed $meta): ?array
+    {
+        return match (true) {
+            $platform === Platform::Instagram && filled(data_get($meta, 'audio.id')) => ['audio', trans('posts.form.instagram.music.requires_facebook')],
+            filled(data_get($meta, 'trial_graduation')) && filled(data_get($meta, 'collaborators')) => ['trial_graduation', trans('posts.form.instagram.trial_reel.no_collaborators')],
+            default => null,
+        };
+    }
+
     private static function tiktokPrivacyViolation(mixed $meta): ?array
     {
         $privacyLevel = PrivacyLevel::tryFrom((string) data_get($meta, 'privacy_level'));
