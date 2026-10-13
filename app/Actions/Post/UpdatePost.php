@@ -23,6 +23,7 @@ use App\Support\PostApproval;
 use App\Support\PostCompositionValidator;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
+use App\Support\Social\DiscordChannelName;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
@@ -150,10 +151,10 @@ class UpdatePost
 
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
-        $meta = PostPlatformMetaRules::normalize(array_filter(
+        $meta = DiscordChannelName::fill($post->socialAccount, PostPlatformMetaRules::normalize(array_filter(
             array_merge($post->meta ?? [], data_get($data, 'meta') ?? []),
             fn (mixed $value): bool => $value !== null,
-        ));
+        )));
         $scheduledAt = match (true) {
             $keepsPending => $post->scheduled_at?->toIso8601String(),
             $position !== null => null,

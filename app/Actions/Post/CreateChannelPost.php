@@ -17,6 +17,7 @@ use App\Models\Workspace;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostApproval;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\DiscordChannelName;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -63,7 +64,7 @@ class CreateChannelPost
             ...$account->channelSnapshot(),
             'content_type' => $destination['content_type'],
             'publish_status' => PublishStatus::Pending,
-            'meta' => PostPlatformMetaRules::normalize($destination['meta'] ?? []),
+            'meta' => DiscordChannelName::fill($account, PostPlatformMetaRules::normalize($destination['meta'] ?? [])),
         ]);
 
         SyncOwnedMedia::execute(
