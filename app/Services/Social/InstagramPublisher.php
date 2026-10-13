@@ -268,22 +268,44 @@ class InstagramPublisher
             return [];
         }
 
-        $trialGraduation = TrialGraduation::tryFrom((string) data_get($this->post->meta, 'trial_graduation'));
-        $audioId = data_get($this->post->meta, 'audio.id');
-
         return array_filter([
             'share_to_feed' => data_get($this->post->meta, 'share_to_feed', true) ? 'true' : 'false',
-            'trial_params' => $trialGraduation === null
-                ? null
-                : (string) json_encode(['graduation_strategy' => $trialGraduation->value]),
-            'audio_configuration' => filled($audioId) && $this->post->socialAccount?->platform === Platform::InstagramFacebook
-                ? (string) json_encode(array_filter([
-                    'audio_id' => (string) $audioId,
-                    'audio_volume' => transform(data_get($this->post->meta, 'audio.audio_volume'), fn (mixed $volume): int => (int) $volume),
-                    'video_volume' => transform(data_get($this->post->meta, 'audio.video_volume'), fn (mixed $volume): int => (int) $volume),
-                ], fn (mixed $value): bool => $value !== null))
-                : null,
-        ], fn (?string $value): bool => $value !== null);
+            'trial_params' => $this->trialParams(),
+            'audio_configuration' => $this->audioConfiguration(),
+        ]);
+    }
+
+    /**
+     * A trial reel is shown to non-followers first, then graduated by hand
+     * or by Instagram when it performs well.
+     */
+    private function trialParams(): ?string
+    {
+        return transform(
+            TrialGraduation::tryFrom((string) data_get($this->post->meta, 'trial_graduation')),
+            fn (TrialGraduation $graduation): string => (string) json_encode(['graduation_strategy' => $graduation->value]),
+        );
+    }
+
+    /**
+     * The picked music, which the Audio API only takes from an account
+     * connected through Facebook. A volume left out is Instagram's default.
+     */
+    private function audioConfiguration(): ?string
+    {
+        $audioId = data_get($this->post->meta, 'audio.id');
+
+        if (blank($audioId) || $this->post->socialAccount?->platform !== Platform::InstagramFacebook) {
+            return null;
+        }
+
+        $volume = fn (string $key): ?int => transform(data_get($this->post->meta, "audio.{$key}"), fn (mixed $value): int => (int) $value);
+
+        return (string) json_encode(array_filter([
+            'audio_id' => (string) $audioId,
+            'audio_volume' => $volume('audio_volume'),
+            'video_volume' => $volume('video_volume'),
+        ], fn (mixed $value): bool => $value !== null));
     }
 
     /**
