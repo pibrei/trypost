@@ -9,21 +9,24 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 
 /**
- * What a post's meta names from its channel's own data, filled in on every
- * create and update so the web, the API and MCP store the same thing from
- * an id alone. One arm per network that needs it.
+ * The meta a post stores for its channel, on every create and update: the
+ * format cleaned up (`PostPlatformMetaRules::normalize`), then what the meta
+ * names from the channel's own data filled in, so the web, the API and MCP
+ * store the same thing from an id alone. One arm per network that needs it.
  *
  * A lookup that fails or does not find the id keeps what the meta already
  * had: saving never fails over a display name.
  */
-class ChannelMeta
+class PostMeta
 {
     /**
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
-    public static function fillFromAccount(SocialAccount $account, array $meta): array
+    public static function forChannel(SocialAccount $account, array $meta): array
     {
+        $meta = PostPlatformMetaRules::normalize($meta);
+
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),
             default => $meta,

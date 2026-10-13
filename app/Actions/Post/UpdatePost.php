@@ -18,10 +18,10 @@ use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\ChannelMeta;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostApproval;
 use App\Support\PostCompositionValidator;
+use App\Support\PostMeta;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
@@ -151,10 +151,10 @@ class UpdatePost
 
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
-        $meta = ChannelMeta::fillFromAccount($channel, PostPlatformMetaRules::normalize(array_filter(
+        $meta = PostMeta::forChannel($channel, array_filter(
             array_merge($post->meta ?? [], data_get($data, 'meta') ?? []),
             fn (mixed $value): bool => $value !== null,
-        )));
+        ));
         $scheduledAt = match (true) {
             $keepsPending => $post->scheduled_at?->toIso8601String(),
             $position !== null => null,
