@@ -100,10 +100,8 @@ const channelId = computed({
         updateMeta({
             channel_id: value || null,
             channel_name:
-                channels.value.find((channel) => channel.id === value)?.name ??
-                (value === props.meta?.channel_id
-                    ? (props.meta?.channel_name ?? null)
-                    : null),
+                channelOptions.value.find((channel) => channel.id === value)
+                    ?.name ?? null,
         }),
 });
 
