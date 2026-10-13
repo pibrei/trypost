@@ -264,7 +264,7 @@ class SocialAccount extends Model
      * Instagram Login (stored on connect, and filled in for older accounts by
      * the daily connection check).
      */
-    public function instagramAccountId(): ?string
+    private function instagramAccountId(): ?string
     {
         return match ($this->platform) {
             SocialPlatform::InstagramFacebook => (string) $this->platform_user_id,

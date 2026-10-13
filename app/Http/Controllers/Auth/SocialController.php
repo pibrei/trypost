@@ -306,11 +306,7 @@ class SocialController extends Controller
         if ($reconnect !== null) {
             return array_values(array_filter(
                 $identities,
-                fn (array $identity): bool => $reconnect->isIdentity(
-                    SocialPlatform::from((string) data_get($identity, 'platform')),
-                    (string) data_get($identity, 'platform_user_id'),
-                    data_get($identity, 'attributes.meta.ig_user_id'),
-                ),
+                fn (array $identity): bool => self::isIdentityOf($reconnect, $identity),
             ));
         }
 
@@ -322,13 +318,23 @@ class SocialController extends Controller
             $identities,
             fn (array $identity): bool => ! $seated->contains(
                 fn (SocialAccount $account): bool => $account->platform->value !== data_get($identity, 'platform')
-                    && $account->isIdentity(
-                        SocialPlatform::from((string) data_get($identity, 'platform')),
-                        (string) data_get($identity, 'platform_user_id'),
-                        data_get($identity, 'attributes.meta.ig_user_id'),
-                    ),
+                    && self::isIdentityOf($account, $identity),
             ),
         ));
+    }
+
+    /**
+     * Whether an offered identity is this account (see SocialAccount::isIdentity()).
+     *
+     * @param  array<string, mixed>  $identity
+     */
+    private static function isIdentityOf(SocialAccount $account, array $identity): bool
+    {
+        return $account->isIdentity(
+            SocialPlatform::from((string) data_get($identity, 'platform')),
+            (string) data_get($identity, 'platform_user_id'),
+            data_get($identity, 'attributes.meta.ig_user_id'),
+        );
     }
 
     /**

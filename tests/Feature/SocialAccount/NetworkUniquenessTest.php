@@ -510,8 +510,7 @@ test('an instagram login account without a stored account id is not matched acro
     $account = SocialAccount::factory()->instagram()->create(['platform_user_id' => 'app-scoped-1', 'meta' => []]);
     Http::fake();
 
-    expect($account->isIdentity(Platform::InstagramFacebook, 'ig-pro-1'))->toBeFalse()
-        ->and($account->instagramAccountId())->toBeNull();
+    expect($account->isIdentity(Platform::InstagramFacebook, 'ig-pro-1'))->toBeFalse();
 
     Http::assertNothingSent();
 });
