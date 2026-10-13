@@ -1284,14 +1284,14 @@ it('persists instagram collaborators, trial reel and music', function () {
         'meta' => [
             'collaborators' => ['@alice', 'bob', 'Alice'],
             'trial_graduation' => 'MANUAL',
-            'audio' => ['id' => 'audio-1', 'title' => 'Song', 'artist' => 'Band'],
+            'audio' => ['id' => '1234567890', 'title' => 'Song', 'artist' => 'Band'],
         ],
     ])->assertCreated();
 
     expect(Post::where('social_account_id', $instagram->id)->sole()->meta)->toEqual([
         'collaborators' => ['alice', 'bob'],
         'trial_graduation' => 'MANUAL',
-        'audio' => ['id' => 'audio-1', 'title' => 'Song', 'artist' => 'Band'],
+        'audio' => ['id' => '1234567890', 'title' => 'Song', 'artist' => 'Band'],
     ]);
 });
 
@@ -1328,7 +1328,7 @@ it('rejects publishing instagram music without Facebook and a trial reel with co
         ->assertUnprocessable()
         ->assertJsonValidationErrors($error);
 })->with([
-    'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => 'audio-1']], 'meta.audio'],
+    'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => '1234567890']], 'meta.audio'],
     'music without id' => [Platform::InstagramFacebook, ['audio' => ['title' => 'Song']], 'meta.audio.id'],
     'trial with collaborators' => [Platform::InstagramFacebook, ['collaborators' => ['alice'], 'trial_graduation' => 'MANUAL'], 'meta.trial_graduation'],
 ]);
@@ -1355,7 +1355,7 @@ it('ignores instagram reel-only meta on a feed post', function (Platform $platfo
 
     expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
 })->with([
-    'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => 'audio-1']]],
+    'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => '1234567890']]],
     'trial with collaborators' => [Platform::InstagramFacebook, ['collaborators' => ['alice'], 'trial_graduation' => 'MANUAL']],
 ]);
 
@@ -1365,7 +1365,7 @@ it('refuses scheduling a new instagram login reel with music, alone and in a bat
     $destination = [
         'social_account_id' => $instagram->id,
         'content_type' => ContentType::InstagramReel->value,
-        'meta' => ['audio' => ['id' => 'audio-1']],
+        'meta' => ['audio' => ['id' => '1234567890']],
     ];
 
     $this->withHeaders($this->headers)
@@ -1385,17 +1385,18 @@ it('refuses scheduling a new instagram login reel with music, alone and in a bat
     'batch' => ['api.posts.batch.store', ['batch' => true], 'destinations.0.meta.audio'],
 ]);
 
-it('refuses music volumes outside 0 to 100 and a cover that is not a link', function (array $audio, string $error) {
+it('refuses music volumes outside 0 to 100, a cover that is not a link and a track id that is not numeric', function (array $audio, string $error) {
     $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::InstagramFacebook]);
 
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Reel',
         'social_account_id' => $instagram->id,
         'content_type' => ContentType::InstagramReel->value,
-        'meta' => ['audio' => ['id' => 'audio-1', ...$audio]],
+        'meta' => ['audio' => ['id' => '1234567890', ...$audio]],
     ])->assertUnprocessable()->assertJsonValidationErrors($error);
 })->with([
     'music volume above 100' => [['audio_volume' => 101], 'meta.audio.audio_volume'],
     'video volume below 0' => [['video_volume' => -1], 'meta.audio.video_volume'],
     'cover not a link' => [['cover_url' => 'not a link'], 'meta.audio.cover_url'],
+    'track id not numeric' => [['id' => 'abc'], 'meta.audio.id'],
 ]);

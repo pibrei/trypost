@@ -2555,7 +2555,7 @@ test('instagram publisher sends collaborators and a trial reel on a reel', funct
 test('instagram publisher fails a reel with music on an account connected through Instagram Login', function () {
     $this->post->update([
         'content_type' => ContentType::InstagramReel,
-        'meta' => ['audio' => ['id' => 'audio-1']],
+        'meta' => ['audio' => ['id' => '1234567890']],
         'media' => instagramVideo(),
     ]);
     fakeInstagramReelFlow();
@@ -2572,7 +2572,7 @@ test('instagram publisher fails a reel with music on an account connected throug
 test('a feed video with a leftover track on an account connected through Instagram Login publishes without music', function () {
     $this->post->update([
         'content_type' => ContentType::InstagramFeed,
-        'meta' => ['audio' => ['id' => 'audio-1']],
+        'meta' => ['audio' => ['id' => '1234567890']],
         'media' => instagramVideo(),
     ]);
     fakeInstagramReelFlow();
@@ -2595,7 +2595,7 @@ test('instagram publisher attaches music to a reel of an account connected throu
     $post = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
         'user_id' => $this->user->id,
         'content' => 'With music',
-        'meta' => ['audio' => ['id' => 'audio-1', 'title' => 'Song', 'video_volume' => $videoVolume]],
+        'meta' => ['audio' => ['id' => '1234567890', 'title' => 'Song', 'video_volume' => $videoVolume]],
         'media' => [[
             'id' => 'test-media-video',
             'path' => 'media/2026-01/test-video.mp4',
@@ -2617,7 +2617,7 @@ test('instagram publisher attaches music to a reel of an account connected throu
     $this->publisher->publish($post);
 
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/igf_1/media')
-        && json_decode((string) data_get($request->data(), 'audio_configuration'), true) === ['audio_id' => 'audio-1', 'video_volume' => 20]
+        && json_decode((string) data_get($request->data(), 'audio_configuration'), true) === ['audio_id' => '1234567890', 'video_volume' => 20]
         && data_get($request->data(), 'collaborators') === null && data_get($request->data(), 'trial_params') === null);
 })->with(['volume as a number' => [20], 'volume as text' => ['20']]);
 
@@ -2703,7 +2703,7 @@ test('a feed video on an account connected through Facebook sends no trial or mu
     $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->create([
         'user_id' => $this->user->id,
         'content' => 'Feed video',
-        'meta' => ['trial_graduation' => 'MANUAL', 'audio' => ['id' => 'audio-1']],
+        'meta' => ['trial_graduation' => 'MANUAL', 'audio' => ['id' => '1234567890']],
         'media' => instagramVideo(),
     ]);
     $post->setRelation('socialAccount', $account);

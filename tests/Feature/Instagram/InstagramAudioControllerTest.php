@@ -30,7 +30,7 @@ beforeEach(function () {
 test('searches instagram music for an account connected through facebook', function () {
     Http::fake([
         "{$this->graph}/ig_audio*" => Http::response(['audio' => [[
-            'audio_id' => 'audio-1',
+            'audio_id' => '1234567890',
             'title' => 'Song',
             'display_artist' => 'Band',
             'cover_artwork_thumbnail_uri' => 'https://example.com/cover.jpg',
@@ -44,7 +44,7 @@ test('searches instagram music for an account connected through facebook', funct
         ->getJson(route('app.instagram.audio.index', ['account' => $this->account, 'q' => 'song']))
         ->assertOk()
         ->assertExactJson([[
-            'id' => 'audio-1',
+            'id' => '1234567890',
             'type' => 'music',
             'title' => 'Song',
             'artist' => 'Band',

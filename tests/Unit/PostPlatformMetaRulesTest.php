@@ -460,7 +460,7 @@ test('the documentation describes the youtube title as the first line of the con
 
 test('instagram music and trial reel rules apply only to reels', function () {
     $trialWithCollaborators = ['collaborators' => ['alice'], 'trial_graduation' => 'MANUAL'];
-    $music = ['audio' => ['id' => 'audio-1']];
+    $music = ['audio' => ['id' => '1234567890']];
 
     expect(PostPlatformMetaRules::requiredMetaViolation(Platform::InstagramFacebook, $trialWithCollaborators, ContentType::InstagramReel)[0] ?? null)->toBe('trial_graduation')
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::Instagram, $music, 'instagram_reel')[0] ?? null)->toBe('audio')

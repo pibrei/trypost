@@ -64,7 +64,7 @@ class PostPlatformMetaRules
             "{$prefix}.collaborators.*" => ['string', 'regex:'.self::INSTAGRAM_USERNAME_PATTERN],
             "{$prefix}.trial_graduation" => ['sometimes', 'nullable', 'string', Rule::enum(TrialGraduation::class)],
             "{$prefix}.audio" => ['sometimes', 'nullable', 'array'],
-            "{$prefix}.audio.id" => ['sometimes', 'nullable', 'string', 'max:64'],
+            "{$prefix}.audio.id" => ['sometimes', 'nullable', 'string', 'max:64', 'regex:/^[0-9]+$/'],
             "{$prefix}.audio.title" => ['sometimes', 'nullable', 'string', 'max:255'],
             "{$prefix}.audio.artist" => ['sometimes', 'nullable', 'string', 'max:255'],
             "{$prefix}.audio.cover_url" => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],

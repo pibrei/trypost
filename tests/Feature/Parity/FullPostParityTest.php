@@ -269,7 +269,7 @@ function fullPostCase(string $name): array
             'content_type' => 'instagram_reel',
             'content' => 'Reel with music',
             'media' => [['upload_token' => fullPostVideo()->upload_token]],
-            'meta' => ['collaborators' => ['friend.three'], 'audio' => ['id' => 'summer_song', 'title' => 'Song', 'audio_volume' => 100, 'video_volume' => 0]],
+            'meta' => ['collaborators' => ['friend.three'], 'audio' => ['id' => '1122334455', 'title' => 'Song', 'audio_volume' => 100, 'video_volume' => 0]],
         ],
         'instagram story' => [
             'account' => $account('instagram', ['platform_user_id' => 'ig_user']),
@@ -805,7 +805,7 @@ function fullPostExpected(string $name): array
                     'media_type' => 'REELS',
                     'collaborators' => '["friend.three"]',
                     'share_to_feed' => 'true',
-                    'audio_configuration' => '{"audio_id":"summer_song","audio_volume":100,"video_volume":0}',
+                    'audio_configuration' => '{"audio_id":"1122334455","audio_volume":100,"video_volume":0}',
                 ],
             ],
             [

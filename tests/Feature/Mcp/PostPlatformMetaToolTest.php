@@ -1058,7 +1058,7 @@ test('publish post rejects instagram music on an account not connected through F
     $post = Post::factory()->forAccount($instagram, ContentType::InstagramReel)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-        'meta' => ['audio' => ['id' => 'audio-1']],
+        'meta' => ['audio' => ['id' => '1234567890']],
     ]);
 
     TryPostServer::actingAs($this->user)

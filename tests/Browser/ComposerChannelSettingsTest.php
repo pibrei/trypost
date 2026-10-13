@@ -782,7 +782,7 @@ test('a picked track whose cover cannot be refreshed shows the music icon instea
 
 test('the instagram reel card picks music for an account connected through Facebook', function () {
     Http::fake([config('trypost.platforms.instagram-facebook.graph_api').'/ig_audio*' => Http::response(['audio' => [[
-        'audio_id' => 'audio-1',
+        'audio_id' => '1234567890',
         'title' => 'Summer Song',
         'display_artist' => 'The Band',
         'cover_artwork_thumbnail_uri' => null,
@@ -795,8 +795,8 @@ test('the instagram reel card picks music for an account connected through Faceb
     waitForChannelSettingsTestId($page, 'instagram-music-add');
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-track-audio-1');
-    $page->click('@instagram-music-track-audio-1');
+    waitForChannelSettingsTestId($page, 'instagram-music-track-1234567890');
+    $page->click('@instagram-music-track-1234567890');
     waitForChannelSettingsTestId($page, 'instagram-music-selected');
     $page->assertSeeIn('@instagram-music-selected', 'Summer Song')
         ->assertSeeIn('@instagram-preview-audio', 'Summer Song')
@@ -820,7 +820,7 @@ test('the instagram reel card picks music for an account connected through Faceb
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
 
     expect(data_get($post->fresh()->meta, 'audio'))->toEqual([
-        'id' => 'audio-1',
+        'id' => '1234567890',
         'title' => 'Summer Song',
         'artist' => 'The Band',
         'cover_url' => null,
@@ -1497,7 +1497,7 @@ test('the picked track plays and pauses from its card and can be removed', funct
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel);
     $post->update(['meta' => ['audio' => [
-        'id' => 'audio-1',
+        'id' => '1234567890',
         'title' => 'Summer Song',
         'preview_url' => 'https://example.com/preview.mp3',
     ]]]);
@@ -1563,7 +1563,7 @@ test('playing the picked track plays the reel preview video at the chosen video 
     $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];
     $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel, $video);
     $post->update(['meta' => ['audio' => [
-        'id' => 'audio-1',
+        'id' => '1234567890',
         'title' => 'Summer Song',
         'artist' => 'The Band',
         'preview_url' => 'https://example.com/preview.mp3',

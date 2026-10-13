@@ -720,7 +720,7 @@ test('a repurpose refuses music on an instagram login reel destination when it i
     $destination = [
         'social_account_id' => $instagram->id,
         'content_type' => ContentType::InstagramReel->value,
-        'meta' => ['audio' => ['id' => 'audio-1']],
+        'meta' => ['audio' => ['id' => '1234567890']],
     ];
 
     $active = Repurpose::factory()->for($workspace)->create([

@@ -67,8 +67,8 @@ test('instagram collaborators, trial reels and music are stored the same on the 
     'trial reel' => [Platform::Instagram, ['trial_graduation' => 'MANUAL'], ['trial_graduation' => 'MANUAL']],
     'music through facebook' => [
         Platform::InstagramFacebook,
-        ['audio' => ['id' => 'audio-1', 'title' => 'Song', 'artist' => 'Band', 'audio_volume' => 80, 'video_volume' => 20, 'unknown' => 'dropped']],
-        ['audio' => ['id' => 'audio-1', 'title' => 'Song', 'artist' => 'Band', 'audio_volume' => 80, 'video_volume' => 20]],
+        ['audio' => ['id' => '1234567890', 'title' => 'Song', 'artist' => 'Band', 'audio_volume' => 80, 'video_volume' => 20, 'unknown' => 'dropped']],
+        ['audio' => ['id' => '1234567890', 'title' => 'Song', 'artist' => 'Band', 'audio_volume' => 80, 'video_volume' => 20]],
     ],
     'music without a track id on a draft' => [Platform::InstagramFacebook, ['audio' => ['title' => 'Song']], ['audio' => ['title' => 'Song']]],
 ]);
@@ -88,7 +88,7 @@ test('scheduling refuses a trial reel with collaborators and music without faceb
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp'])->with([
     'trial reel with collaborators' => [Platform::InstagramFacebook, ['collaborators' => ['alice'], 'trial_graduation' => 'MANUAL'], 'trial_graduation', 'posts.form.instagram.trial_reel.no_collaborators'],
-    'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => 'audio-1']], 'audio', 'posts.form.instagram.music.requires_facebook'],
+    'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => '1234567890']], 'audio', 'posts.form.instagram.music.requires_facebook'],
 ]);
 
 test('scheduling refuses music without a track id on the web, api and mcp', function (string $surface) {
@@ -138,7 +138,7 @@ test('a content type that is not text is refused with a validation error on the 
         'content_type' => 5,
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
-        'meta' => ['audio' => ['id' => 'audio-1']],
+        'meta' => ['audio' => ['id' => '1234567890']],
     ]);
 
     $surface === 'mcp'
@@ -149,7 +149,7 @@ test('a content type that is not text is refused with a validation error on the 
 
 test('scheduling without sending the content type checks the reel rules against the stored one on the web, api and mcp', function (string $surface) {
     $post = instagramSettingsParityReel(Platform::Instagram);
-    $post->forceFill(['meta' => ['audio' => ['id' => 'audio-1']]])->save();
+    $post->forceFill(['meta' => ['audio' => ['id' => '1234567890']]])->save();
     $payload = ['status' => Status::Scheduled->value, 'scheduled_at' => now()->addDay()->toIso8601String(), 'content' => $post->content];
 
     $response = match ($surface) {
