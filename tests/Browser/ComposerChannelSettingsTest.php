@@ -1418,3 +1418,73 @@ test('a failed instagram music search says so and lets the picker close', functi
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('searching instagram music asks instagram once the typing stops', function () {
+    $graph = config('trypost.platforms.instagram-facebook.graph_api');
+    Http::fake(["{$graph}/ig_audio*" => fn (Request $request) => Http::response(['audio' => str_contains($request->url(), 'search_query=grudge')
+        ? [['audio_id' => 'audio-grudge', 'title' => 'Grudge', 'display_artist' => 'Tash']]
+        : [['audio_id' => 'audio-trending', 'title' => 'Trending', 'display_artist' => 'Band']]])]);
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    $page->click('@instagram-music-add');
+    waitForChannelSettingsTestId($page, 'instagram-music-track-audio-trending');
+
+    $page->type('@instagram-music-search', 'grudge');
+    waitForChannelSettingsTestId($page, 'instagram-music-track-audio-grudge');
+
+    $page->assertMissing('@instagram-music-track-audio-trending')->assertNoJavaScriptErrors();
+    $musicSearches = collect(Http::recorded())
+        ->map(fn (array $pair): string => $pair[0]->url())
+        ->filter(fn (string $url): bool => str_contains($url, 'audio_type=music') && str_contains($url, 'search_query='))
+        ->values();
+
+    expect($musicSearches)->toHaveCount(1)
+        ->and($musicSearches->first())->toContain('search_query=grudge');
+});
+
+test('the picked track plays and pauses from its card and can be removed', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel);
+    $post->update(['meta' => ['audio' => [
+        'id' => 'audio-1',
+        'title' => 'Summer Song',
+        'preview_url' => 'https://example.com/preview.mp3',
+    ]]]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-music-selected-preview');
+    $page->script('HTMLMediaElement.prototype.play = function () { return Promise.resolve(); }; HTMLMediaElement.prototype.pause = function () {};');
+
+    $page->click('@instagram-music-selected-preview');
+    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-preview\"]')?.getAttribute('aria-label') === '".__('posts.form.instagram.music.pause')."'");
+    $page->assertAttribute('@instagram-music-selected-preview', 'aria-label', __('posts.form.instagram.music.pause'));
+
+    $page->click('@instagram-music-selected-preview');
+    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-preview\"]')?.getAttribute('aria-label') === '".__('posts.form.instagram.music.play')."'");
+    $page->assertAttribute('@instagram-music-selected-preview', 'aria-label', __('posts.form.instagram.music.play'));
+
+    $page->click('@instagram-music-remove');
+    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    $page->assertMissing('@instagram-music-selected')
+        ->click('@composer-save-draft');
+    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'audio'))->toBeNull();
+});
+
+test('a trial reel shows its explanation under the options and its badge on the preview', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
+    $post->update(['meta' => ['trial_graduation' => 'MANUAL']]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-trial-reel-hint');
+
+    $page->assertSeeIn('@instagram-trial-reel-hint', __('posts.form.instagram.trial_reel.manual_hint'))
+        ->assertSeeIn('@instagram-preview-trial', __('posts.form.instagram.trial_reel.badge'))
+        ->assertNoJavaScriptErrors();
+});

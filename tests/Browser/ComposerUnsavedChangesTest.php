@@ -202,3 +202,25 @@ test('picking a discord channel stores its name for the preview', function () {
 
     expect($post->fresh()->meta)->toMatchArray(['channel_id' => '111', 'channel_name' => 'general']);
 });
+
+test('following an app link away from an edited post asks first and leaves only on discard', function () {
+    $post = seedUnsavedChangesReel();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->click('@instagram-share-to-feed')
+        ->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+
+    $page->assertVisible('@post-composer-dialog')
+        ->click('@unsaved-changes-keep');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    $page->assertVisible('@post-composer-dialog')
+        ->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@post-composer-dialog')->assertNoJavaScriptErrors();
+    expect($post->fresh()->meta)->toBe([]);
+});
