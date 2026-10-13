@@ -370,6 +370,7 @@ return [
                 'link_body' => 'Pour publier des reels avec musique, liez Instagram à votre Page Facebook. Nous enregistrerons d\'abord votre publication en brouillon. Rouvrez-la ensuite depuis Brouillons pour ajouter la musique.',
                 'maybe_later' => 'Plus tard',
                 'save_and_link' => 'Lier',
+                'save_and_link_blocked' => 'Ce post ne peut pas encore être enregistré. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
             ],
             'collaborators' => [
                 'label' => 'Collaborateurs',

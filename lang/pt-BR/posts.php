@@ -370,6 +370,7 @@ return [
                 'link_body' => 'Para publicar reels com música, vincule o Instagram à sua Página do Facebook. Vamos salvar seu post como rascunho antes. Depois, abra-o em Rascunhos para adicionar a música.',
                 'maybe_later' => 'Agora não',
                 'save_and_link' => 'Salvar e vincular',
+                'save_and_link_blocked' => 'Ainda não dá para salvar este post. Espere os envios terminarem e corrija o que está destacado, depois tente de novo.',
             ],
             'collaborators' => [
                 'label' => 'Colaboradores',

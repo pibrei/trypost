@@ -370,6 +370,7 @@ return [
                 'link_body' => 'Aby publikować rolki z muzyką, połącz Instagram ze swoją stroną na Facebooku. Najpierw zapiszemy post jako wersję roboczą. Potem otwórz go w Wersjach roboczych, aby dodać muzykę.',
                 'maybe_later' => 'Później',
                 'save_and_link' => 'Zapisz i połącz',
+                'save_and_link_blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
             ],
             'collaborators' => [
                 'label' => 'Współtwórcy',

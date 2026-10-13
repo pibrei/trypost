@@ -370,6 +370,7 @@ return [
                 'link_body' => '음악이 있는 릴스를 게시하려면 Instagram을 Facebook 페이지에 연결하세요. 연결 전에 게시물을 임시저장합니다. 그다음 임시저장에서 열어 음악을 추가하세요.',
                 'maybe_later' => '나중에',
                 'save_and_link' => '저장 후 연결',
+                'save_and_link_blocked' => '이 게시물은 아직 저장할 수 없습니다. 업로드가 끝날 때까지 기다리고 표시된 부분을 고친 뒤 다시 시도하세요.',
             ],
             'collaborators' => [
                 'label' => '공동 작업자',

@@ -370,6 +370,7 @@ return [
                 'link_body' => '要发布带音乐的 Instagram Reels，请将 Instagram 关联到你的 Facebook 公共主页。关联前我们会先把帖子保存为草稿。之后从草稿中打开它来添加音乐。',
                 'maybe_later' => '以后再说',
                 'save_and_link' => '保存并关联',
+                'save_and_link_blocked' => '此帖子暂时无法保存。请等待上传完成并修正标出的问题，然后重试。',
             ],
             'collaborators' => [
                 'label' => '协作者',

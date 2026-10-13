@@ -372,6 +372,7 @@ return [
                 'link_body' => 'Müzikli Reels yayınlamak için Instagram\'ı Facebook Sayfana bağla. Önce gönderini taslak olarak kaydedeceğiz. Ardından müzik eklemek için Taslaklar\'dan aç.',
                 'maybe_later' => 'Sonra',
                 'save_and_link' => 'Kaydet ve bağla',
+                'save_and_link_blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekle, işaretlenenleri düzelt ve tekrar dene.',
             ],
             'collaborators' => [
                 'label' => 'Ortak çalışanlar',

@@ -370,6 +370,7 @@ return [
                 'link_body' => 'Per pubblicare reel con musica, collega Instagram alla tua Pagina Facebook. Salveremo prima il post come bozza. Poi riaprilo da Bozze per aggiungere la musica.',
                 'maybe_later' => 'Più tardi',
                 'save_and_link' => 'Salva e collega',
+                'save_and_link_blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
             ],
             'collaborators' => [
                 'label' => 'Collaboratori',

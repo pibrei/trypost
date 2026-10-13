@@ -372,6 +372,7 @@ return [
                 'link_body' => 'Um Reels mit Musik zu posten, verknüpfe Instagram mit deiner Facebook-Seite. Wir speichern deinen Beitrag vorher als Entwurf. Öffne ihn danach unter Entwürfe, um Musik hinzuzufügen.',
                 'maybe_later' => 'Später',
                 'save_and_link' => 'Verknüpfen',
+                'save_and_link_blocked' => 'Dieser Post kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, behebe das Markierte und versuche es erneut.',
             ],
             'collaborators' => [
                 'label' => 'Mitwirkende',

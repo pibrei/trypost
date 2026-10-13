@@ -370,6 +370,7 @@ return [
                 'link_body' => 'Om reels met muziek te plaatsen, koppel je Instagram aan je Facebook-pagina. We slaan je bericht eerst op als concept. Open het daarna via Concepten om muziek toe te voegen.',
                 'maybe_later' => 'Later',
                 'save_and_link' => 'Opslaan en koppelen',
+                'save_and_link_blocked' => 'Deze post kan nog niet worden opgeslagen. Wacht tot de uploads klaar zijn, los het gemarkeerde op en probeer het opnieuw.',
             ],
             'collaborators' => [
                 'label' => 'Medewerkers',

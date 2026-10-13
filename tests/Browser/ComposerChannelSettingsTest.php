@@ -630,6 +630,26 @@ test('save and link never publishes a scheduled reel switched to share now', fun
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
 
+test('save and link explains why a scheduled reel that cannot be saved stays open', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-music-add');
+
+    $page->click('@instagram-music-add');
+    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    $page->click('@instagram-music-save-and-link');
+    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link-blocked');
+
+    $page->assertSee(__('posts.form.instagram.music.save_and_link_blocked'))
+        ->assertVisible('@post-composer-dialog')
+        ->assertMissing('@instagram-facebook-requirements')
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->status)->toBe(Status::Scheduled);
+});
+
 test('save and link saves a draft reel as a draft before linking Facebook', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);

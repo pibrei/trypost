@@ -1817,12 +1817,12 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
 const submit = (
     status: PostComposition['status'],
     onSaved?: () => void,
-): void => {
+): boolean => {
     if (
         !canSubmit.value ||
         (status !== PostStatus.Draft && hasBlockingIssues.value)
     )
-        return;
+        return false;
     submittedMedia.value = snapshotMedia();
     const queue =
         status === PostStatus.Scheduled &&
@@ -1831,7 +1831,7 @@ const submit = (
             : null;
     const payload = composition.materialize(status, queue);
     if (status === PostStatus.Scheduled && !queue) {
-        if (!scheduledInstant) return;
+        if (!scheduledInstant) return false;
         payload.scheduled_at = scheduledInstant;
         if (isInitialQueueSlot()) payload.queue_slot = scheduledInstant;
     }
@@ -1848,6 +1848,8 @@ const submit = (
         saved.value = true;
         onSaved?.();
     });
+
+    return true;
 };
 
 const submitDraft = (): void => {
@@ -1862,10 +1864,16 @@ const saveDraftAndLinkFacebook = (account: ComposerAccount): void => {
         props.initialPost?.status === PostStatus.Scheduled &&
         scheduleMode.value !== 'now';
 
-    submit(
+    const submitted = submit(
         keepsSchedule ? PostStatus.Scheduled : PostStatus.Draft,
         linkFacebook,
     );
+
+    if (!submitted) {
+        toast.error(trans('posts.form.instagram.music.save_and_link_blocked'), {
+            testId: 'instagram-music-save-and-link-blocked',
+        });
+    }
 };
 
 const submitSelectedSchedule = (): void => {

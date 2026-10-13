@@ -370,6 +370,7 @@ return [
                 'link_body' => 'To publish Instagram reels with music, link Instagram to your Facebook Page. We\'ll save your post as a draft before linking. Reopen it from Drafts afterward to add music.',
                 'maybe_later' => 'Maybe later',
                 'save_and_link' => 'Save & link',
+                'save_and_link_blocked' => 'This post can\'t be saved yet. Wait for uploads to finish and fix what\'s highlighted, then try again.',
             ],
             'collaborators' => [
                 'label' => 'Collaborators',
