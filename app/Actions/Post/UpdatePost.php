@@ -151,10 +151,10 @@ class UpdatePost
 
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
-        $meta = PostMeta::forChannel($channel, array_filter(
+        $meta = PostPlatformMetaRules::normalize(array_filter(
             array_merge($post->meta ?? [], data_get($data, 'meta') ?? []),
             fn (mixed $value): bool => $value !== null,
-        ), $post->meta ?? []);
+        ));
         $scheduledAt = match (true) {
             $keepsPending => $post->scheduled_at?->toIso8601String(),
             $position !== null => null,
@@ -206,7 +206,7 @@ class UpdatePost
                 'schedule_mode' => $mode,
                 ...PostApproval::transition($previousStatus, $storedStatus, $actor, $pending ? $position : null),
                 'content_type' => $destination['content_type'],
-                'meta' => PostPlatformMetaRules::forStorage($post->meta ?? [], $destination['meta']),
+                'meta' => PostMeta::forChannel($channel, PostPlatformMetaRules::forStorage($post->meta ?? [], $destination['meta'])),
             ]);
             SyncOwnedMedia::execute($post, $destination['media'], $batch);
 

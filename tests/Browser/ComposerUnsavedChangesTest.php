@@ -229,7 +229,7 @@ test('picking a discord channel stores its name for the preview', function () {
     ]);
     $this->mock(DiscordClient::class, function (MockInterface $discord): void {
         $discord->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
-        $discord->shouldReceive('cachedChannels')->andReturnNull();
+        $discord->shouldReceive('cachedChannels')->andReturn([['id' => '111', 'name' => 'general']]);
     });
     $this->actingAs($user);
 
@@ -493,7 +493,7 @@ test('closing a new post with text never asks, since it is kept as an autosaved 
         ->assertNoJavaScriptErrors();
 });
 
-test('a discord channel missing from the list keeps its stored name', function () {
+test('a discord channel missing from the list shows its stored name and keeps only its id on save', function () {
     Http::fake(['*' => Http::response([], 200)]);
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -519,7 +519,8 @@ test('a discord channel missing from the list keeps its stored name', function (
     waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
     $page->assertNoJavaScriptErrors();
-    expect($post->fresh()->meta)->toMatchArray(['channel_id' => '999', 'channel_name' => 'announcements']);
+    expect($post->fresh()->meta)->toHaveKey('channel_id', '999')
+        ->not->toHaveKey('channel_name');
 });
 
 test('pressing back again while the unsaved changes question is open keeps the edit and still asks', function () {

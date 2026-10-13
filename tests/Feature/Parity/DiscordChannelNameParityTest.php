@@ -69,15 +69,18 @@ test('a discord post created or edited with only the channel id stores its name 
     expect(data_get($post->fresh()->meta, 'channel_name'))->toBe('announcements');
 })->with(['web', 'api', 'mcp']);
 
-test('a discord channel name sent by the client is replaced by the cached list name', function (string $surface) {
-    $this->mock(DiscordClient::class)->shouldReceive('cachedChannels')->andReturn([['id' => '111', 'name' => 'general']]);
+test('a discord channel name sent by the client is never stored on the web, api and mcp', function (string $surface, ?array $cached, ?string $stored) {
+    $this->mock(DiscordClient::class)->shouldReceive('cachedChannels')->andReturn($cached);
 
-    $post = discordChannelNameCreate($surface, ['channel_id' => '111', 'channel_name' => 'stale']);
+    $post = discordChannelNameCreate($surface, ['channel_id' => '111', 'channel_name' => 'sent-by-client']);
 
-    expect(data_get($post->meta, 'channel_name'))->toBe('general');
-})->with(['web', 'api', 'mcp']);
+    expect(data_get($post->meta, 'channel_name'))->toBe($stored);
+})->with(['web', 'api', 'mcp'])->with([
+    'the cached list names the channel' => [[['id' => '111', 'name' => 'general']], 'general'],
+    'no cached list' => [null, null],
+]);
 
-test('without the channel in the cached list a discord post keeps its name for the same channel and drops it for another one', function (string $surface, ?array $cached) {
+test('without the channel in the cached list a discord post stores no channel name, even for the same channel', function (string $surface, ?array $cached) {
     $this->mock(DiscordClient::class, function (MockInterface $discord) use ($cached): void {
         $discord->shouldReceive('cachedChannels')->andReturn($cached);
         $discord->shouldNotReceive('channels');
@@ -88,12 +91,9 @@ test('without the channel in the cached list a discord post keeps its name for t
         'meta' => ['channel_id' => '999', 'channel_name' => 'old-channel'],
     ]);
 
-    discordChannelNameUpdate($surface, $post, ['channel_id' => '999']);
-    expect($post->fresh()->meta)->toMatchArray(['channel_id' => '999', 'channel_name' => 'old-channel']);
+    discordChannelNameUpdate($surface, $post, ['channel_id' => '999', 'channel_name' => 'old-channel']);
 
-    auth()->forgetGuards();
-    discordChannelNameUpdate($surface, $post, ['channel_id' => '888']);
-    expect($post->fresh()->meta)->toHaveKey('channel_id', '888')
+    expect($post->fresh()->meta)->toHaveKey('channel_id', '999')
         ->not->toHaveKey('channel_name');
 })->with(['web', 'api', 'mcp'])->with([
     'channel not in the cached list' => [[['id' => '111', 'name' => 'general']]],
@@ -113,15 +113,15 @@ test('only discord posts look up a channel name', function () {
     ])->assertCreated();
 });
 
-test('duplicating a discord post keeps its channel name without asking discord', function () {
+test('duplicating a discord post reads its channel name from the cached list without asking discord', function () {
     $this->mock(DiscordClient::class, function (MockInterface $discord): void {
-        $discord->shouldReceive('cachedChannels')->andReturnNull();
+        $discord->shouldReceive('cachedChannels')->andReturn([['id' => '111', 'name' => 'general']]);
         $discord->shouldNotReceive('channels');
     });
     $post = Post::factory()->forAccount($this->discord, ContentType::DiscordMessage)->create([
         'user_id' => $this->user->id,
         'content' => 'Release notes',
-        'meta' => ['channel_id' => '111', 'channel_name' => 'general'],
+        'meta' => ['channel_id' => '111', 'channel_name' => 'old-name'],
     ]);
 
     $this->actingAs($this->user)->post(route('app.posts.duplicate', $post))->assertRedirect();

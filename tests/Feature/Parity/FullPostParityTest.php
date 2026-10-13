@@ -369,7 +369,6 @@ function fullPostCase(string $name): array
             'media' => [['upload_token' => fullPostImage()->upload_token, 'alt' => 'Discord alt']],
             'meta' => [
                 'channel_id' => '444555666',
-                'channel_name' => 'general',
                 'mentions' => [['token' => '@everyone', 'label' => 'everyone']],
                 'embeds' => [['title' => 'Embed title', 'description' => 'Embed body', 'url' => 'https://example.com', 'image' => 'https://example.com/i.png', 'color' => '#FF8800']],
             ],

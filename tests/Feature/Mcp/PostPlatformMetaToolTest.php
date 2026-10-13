@@ -166,7 +166,7 @@ test('update post merges per-platform meta', function () {
     $post = Post::factory()->forAccount($this->discordAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-        'meta' => ['channel_id' => '444555666', 'channel_name' => 'general'],
+        'meta' => ['channel_id' => '444555666', 'embeds' => [['title' => 'Release']]],
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -179,7 +179,7 @@ test('update post merges per-platform meta', function () {
 
     expect($post->fresh()->meta)->toMatchArray([
         'channel_id' => '444555666',
-        'channel_name' => 'general',
+        'embeds' => [['title' => 'Release']],
         'mentions' => [['token' => '@everyone', 'label' => '@everyone']],
     ]);
 });
