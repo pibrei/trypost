@@ -295,8 +295,15 @@ class InstagramPublisher
     {
         $audioId = data_get($this->post->meta, 'audio.id');
 
-        if (blank($audioId) || $this->post->socialAccount?->platform !== Platform::InstagramFacebook) {
+        if (blank($audioId)) {
             return null;
+        }
+
+        if ($this->post->socialAccount?->platform !== Platform::InstagramFacebook) {
+            throw new InstagramPublishException(
+                userMessage: __('posts.form.instagram.music.requires_facebook'),
+                category: ErrorCategory::ContentPolicy,
+            );
         }
 
         $volume = fn (string $key): ?int => transform(data_get($this->post->meta, "audio.{$key}"), fn (mixed $value): int => (int) $value);

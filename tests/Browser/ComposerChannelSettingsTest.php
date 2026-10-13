@@ -604,6 +604,17 @@ test('save and link keeps a scheduled reel scheduled and opens the Facebook requ
         ->assertPresent('@instagram-facebook-requirements-connect')
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->status)->toBe(Status::Scheduled);
+
+    $page->script(<<<'JS'
+        document.addEventListener('inertia:before', (event) => {
+            window.__connectUrl = event.detail.visit.url.href;
+            event.preventDefault();
+        });
+    JS);
+    $page->click('@instagram-facebook-requirements-connect');
+    waitForChannelSettingsCondition($page, 'window.__connectUrl !== undefined');
+
+    expect($page->script('window.__connectUrl'))->toContain("reconnect={$post->social_account_id}");
 });
 
 test('save and link never publishes a scheduled reel switched to share now', function () {

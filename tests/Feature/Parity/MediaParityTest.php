@@ -106,6 +106,24 @@ test('attaching an upload gives the same media through api and mcp', function ()
         ->and($mcpPost->ownedMedia()->count())->toBe(1);
 });
 
+test('attaching an upload prefers the meta alt text over the alt shorthand and ignores an empty alt through api and mcp', function (array $input, ?string $stored) {
+    $apiPost = mediaParityPost($this);
+    $mcpPost = mediaParityPost($this);
+
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-upload', $apiPost), ['upload_token' => mediaParityUpload($this)->upload_token, ...$input])
+        ->assertSuccessful();
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, ['post_id' => $mcpPost->id, 'upload_token' => mediaParityUpload($this)->upload_token, ...$input])
+        ->assertOk();
+
+    expect(data_get($apiPost->fresh()->media, '0.meta.alt_text'))->toBe($stored)
+        ->and(data_get($mcpPost->fresh()->media, '0.meta.alt_text'))->toBe($stored);
+})->with([
+    'both given' => [['alt' => 'A', 'meta' => ['alt_text' => 'B']], 'B'],
+    'empty alt' => [['alt' => ''], null],
+]);
+
 test('people tagged while attaching an upload or a url are stored the same through api and mcp', function () {
     Http::fake(['example.com/*' => fn () => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200, ['Content-Type' => 'image/png'])]);
     $tags = [['username' => 'alice', 'x' => 0.25, 'y' => 0.5], ['username' => 'bob', 'x' => 0.75, 'y' => 0.5]];

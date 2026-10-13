@@ -16,6 +16,11 @@ import { onScopeDispose, ref, watch } from 'vue';
  * history, since a page opened from a link may have nothing to go back to.
  * Unmounting while held (a save whose page no longer shows the composer)
  * steps back onto the copy, so it never leaves a Back that goes nowhere.
+ *
+ * Stepping back onto the copy gives it the page's state again. Inertia only
+ * fills an entry without state when its page differs from the last one it
+ * wrote, which is no longer true once a back was caught, and a copy left
+ * without state is a Back that does nothing.
  */
 export const useUnsavedChanges = (
     isDirty: () => boolean,
@@ -49,13 +54,28 @@ export const useUnsavedChanges = (
     let holdingBack = false;
     let releasing = false;
     let afterRelease: (() => void) | null = null;
+    let pageState: unknown = null;
+    let pageUrl = window.location.href;
 
     const holdBack = (): void => {
         if (holdingBack || releasing) return;
         holdingBack = true;
-        const state = window.history.state;
+        pageState = window.history.state ?? pageState;
         window.history.replaceState(null, '', window.location.href);
-        window.history.pushState(state, '', window.location.href);
+        window.history.pushState(pageState, '', window.location.href);
+    };
+
+    /** Steps back onto the copy, remembering the state it gets back. */
+    const stepBackOntoCopy = (): void => {
+        pageState = window.history.state ?? pageState;
+        pageUrl = window.location.href;
+        window.history.back();
+    };
+
+    const restorePageState = (): void => {
+        if (window.history.state === null && pageState !== null) {
+            window.history.replaceState(pageState, '', pageUrl);
+        }
     };
 
     /**
@@ -70,7 +90,7 @@ export const useUnsavedChanges = (
         holdingBack = false;
         releasing = true;
         afterRelease = then ?? null;
-        window.history.back();
+        stepBackOntoCopy();
     };
 
     const discard = (): void => {
@@ -90,6 +110,7 @@ export const useUnsavedChanges = (
     const onPopState = (): void => {
         if (releasing) {
             releasing = false;
+            restorePageState();
             const then = afterRelease;
             afterRelease = null;
 
@@ -149,7 +170,10 @@ export const useUnsavedChanges = (
         window.removeEventListener('popstate', onPopState);
         if (holdingBack) {
             holdingBack = false;
-            window.history.back();
+            window.addEventListener('popstate', restorePageState, {
+                once: true,
+            });
+            stepBackOntoCopy();
         }
     });
 

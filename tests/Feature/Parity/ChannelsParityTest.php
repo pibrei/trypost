@@ -206,6 +206,50 @@ test('instagram audio asks an account connected without facebook to link it on t
     Http::assertNothingSent();
 });
 
+test('instagram audio says the lookup failed when instagram does not answer on the web, api and mcp', function (string $failure) {
+    $graph = config('trypost.platforms.instagram-facebook.graph_api');
+    Http::fake(["{$graph}/*" => fn () => $failure === 'server error' ? Http::response(['error' => ['message' => 'Boom']], Response::HTTP_INTERNAL_SERVER_ERROR) : Http::failedConnection()]);
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::InstagramFacebook]);
+    $message = __('posts.form.instagram.music.search_failed');
+
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.index', [$instagram, 'q' => 'grudge']))->assertUnprocessable()->assertJsonValidationErrors(['q' => $message]);
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.show', [$instagram, '111']))->assertUnprocessable()->assertJsonValidationErrors(['q' => $message]);
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio', [$instagram, 'q' => 'grudge']))->assertStatus(Response::HTTP_BAD_GATEWAY)->assertJsonPath('message', $message);
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio.show', [$instagram, '111']))->assertStatus(Response::HTTP_BAD_GATEWAY)->assertJsonPath('message', $message);
+    TryPostServer::actingAs($this->user)->tool(SearchInstagramAudioTool::class, ['account_id' => $instagram->id, 'q' => 'grudge'])->assertHasErrors([$message]);
+    TryPostServer::actingAs($this->user)->tool(GetInstagramAudioTool::class, ['account_id' => $instagram->id, 'audio_id' => '111'])->assertHasErrors([$message]);
+})->with(['server error', 'failed connection']);
+
+test('instagram audio says the lookup failed for a removed track on the web, api and mcp', function () {
+    $graph = config('trypost.platforms.instagram-facebook.graph_api');
+    Http::fake(["{$graph}/111*" => Http::response(['error' => ['message' => 'Unsupported get request.']], Response::HTTP_NOT_FOUND)]);
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::InstagramFacebook]);
+    $message = __('posts.form.instagram.music.search_failed');
+
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.show', [$instagram, '111']))->assertUnprocessable()->assertJsonValidationErrors(['q' => $message]);
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio.show', [$instagram, '111']))->assertStatus(Response::HTTP_BAD_GATEWAY)->assertJsonPath('message', $message);
+    TryPostServer::actingAs($this->user)->tool(GetInstagramAudioTool::class, ['account_id' => $instagram->id, 'audio_id' => '111'])->assertHasErrors([$message]);
+});
+
+test('instagram audio refuses an account of another network on the web, api and mcp', function () {
+    $linkedIn = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $apiMessage = 'Instagram audio is only available for Instagram accounts.';
+    $mcpMessage = 'This tool only works with Instagram social accounts.';
+    Http::fake();
+
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.index', [$linkedIn, 'q' => 'grudge']))->assertNotFound();
+    $this->actingAs($this->user)->getJson(route('app.instagram.audio.show', [$linkedIn, '111']))->assertNotFound();
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio', [$linkedIn, 'q' => 'grudge']))->assertUnprocessable()->assertJsonPath('message', $apiMessage);
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio.show', [$linkedIn, '111']))->assertUnprocessable()->assertJsonPath('message', $apiMessage);
+    TryPostServer::actingAs($this->user)->tool(SearchInstagramAudioTool::class, ['account_id' => $linkedIn->id, 'q' => 'grudge'])->assertHasErrors([$mcpMessage]);
+    TryPostServer::actingAs($this->user)->tool(GetInstagramAudioTool::class, ['account_id' => $linkedIn->id, 'audio_id' => '111'])->assertHasErrors([$mcpMessage]);
+
+    Http::assertNothingSent();
+});
+
 test('instagram audio lookups of another workspace are refused on the api and mcp', function () {
     $foreign = SocialAccount::factory()->instagram()->create(['workspace_id' => Workspace::factory()->create()->id, 'platform' => Platform::InstagramFacebook]);
     Http::fake();

@@ -34,8 +34,6 @@ class InstagramAudioController extends Controller
     {
         $this->authorizeAudioAccount($request, $account);
 
-        abort_unless(ctype_digit($audioId), Response::HTTP_NOT_FOUND);
-
         return new InstagramAudioResource($this->callInstagram(
             fn (): array => GetInstagramAudio::execute($account, $audioId),
         ));

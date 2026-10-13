@@ -28,11 +28,7 @@ class InstagramAudioController extends Controller
 
     public function show(SocialAccount $account, string $audioId): JsonResponse|InstagramAudioResource
     {
-        return $this->lookup($account, function () use ($account, $audioId): InstagramAudioResource {
-            abort_unless(ctype_digit($audioId), Response::HTTP_NOT_FOUND);
-
-            return new InstagramAudioResource(GetInstagramAudio::execute($account, $audioId));
-        });
+        return $this->lookup($account, fn (): InstagramAudioResource => new InstagramAudioResource(GetInstagramAudio::execute($account, $audioId)));
     }
 
     /**

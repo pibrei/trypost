@@ -9,7 +9,9 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -1590,3 +1592,36 @@ test('remembering the instagram account id works on an account with empty meta',
     expect((new ConnectionVerifier)->verify($account))->toBeTrue()
         ->and($account->fresh()->meta)->toEqual(['ig_user_id' => '17841400000000001']);
 })->with(['no meta' => [null], 'empty meta' => [[]]]);
+
+test('instagram login verify leaves meta alone when the profile has no professional account id', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => 'app-scoped-1', 'username' => 'trypost']),
+    ]);
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+        'meta' => ['username' => 'trypost'],
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue()
+        ->and($account->fresh()->meta)->toEqual(['username' => 'trypost']);
+});
+
+test('instagram login verify writes nothing when the professional account id is already stored', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => 'app-scoped-1', 'username' => 'trypost', 'user_id' => 17841400000000001]),
+    ]);
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+        'meta' => ['username' => 'trypost', 'ig_user_id' => '17841400000000001'],
+    ]);
+    $metaWrites = [];
+    DB::listen(function (QueryExecuted $query) use (&$metaWrites): void {
+        if (str_starts_with(strtolower($query->sql), 'update') && str_contains($query->sql.json_encode($query->bindings), 'ig_user_id')) {
+            $metaWrites[] = $query->sql;
+        }
+    });
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue()
+        ->and($metaWrites)->toBe([])
+        ->and($account->fresh()->meta)->toEqual(['username' => 'trypost', 'ig_user_id' => '17841400000000001']);
+});

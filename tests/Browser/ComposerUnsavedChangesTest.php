@@ -460,6 +460,35 @@ test('after leaving an edited post through an app link the browser back button r
         ->assertNoJavaScriptErrors();
 });
 
+test('after keeping an edited post on back and then leaving through an app link the browser back button returns to the post once', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    $page->click('@unsaved-changes-keep');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->assertVisible('@post-composer-dialog')
+        ->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'true');
+
+    $page->back();
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertPathIs(unsavedChangesListPath())
+        ->assertNoJavaScriptErrors();
+});
+
 test('pressing escape on an edited post asks first', function () {
     $post = seedUnsavedChangesReel();
 

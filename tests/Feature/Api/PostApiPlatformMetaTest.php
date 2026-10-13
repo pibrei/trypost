@@ -1308,7 +1308,6 @@ it('rejects invalid instagram collaborators and trial reels', function (array $m
     'more than three' => [['collaborators' => ['a', 'b', 'c', 'd']], 'meta.collaborators'],
     'invalid username' => [['collaborators' => ['not a user']], 'meta.collaborators.0'],
     'unknown strategy' => [['trial_graduation' => 'SOMETIMES'], 'meta.trial_graduation'],
-    'music without id' => [['audio' => ['title' => 'Song']], 'meta.audio.id'],
 ]);
 
 it('rejects publishing instagram music without Facebook and a trial reel with collaborators', function (Platform $platform, array $meta, string $error) {
@@ -1330,6 +1329,7 @@ it('rejects publishing instagram music without Facebook and a trial reel with co
         ->assertJsonValidationErrors($error);
 })->with([
     'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => 'audio-1']], 'meta.audio'],
+    'music without id' => [Platform::InstagramFacebook, ['audio' => ['title' => 'Song']], 'meta.audio.id'],
     'trial with collaborators' => [Platform::InstagramFacebook, ['collaborators' => ['alice'], 'trial_graduation' => 'MANUAL'], 'meta.trial_graduation'],
 ]);
 

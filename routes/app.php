@@ -184,6 +184,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->middleware('throttle:60,1')
         ->name('app.instagram.audio.index');
     Route::get('instagram/accounts/{account}/audio/{audioId}', [InstagramAudioController::class, 'show'])
+        ->whereNumber('audioId')
         ->middleware('throttle:60,1')
         ->name('app.instagram.audio.show');
 

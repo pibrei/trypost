@@ -64,7 +64,7 @@ class PostPlatformMetaRules
             "{$prefix}.collaborators.*" => ['string', 'regex:'.self::INSTAGRAM_USERNAME_PATTERN],
             "{$prefix}.trial_graduation" => ['sometimes', 'nullable', 'string', Rule::enum(TrialGraduation::class)],
             "{$prefix}.audio" => ['sometimes', 'nullable', 'array'],
-            "{$prefix}.audio.id" => ["required_with:{$prefix}.audio", 'string', 'max:64'],
+            "{$prefix}.audio.id" => ['sometimes', 'nullable', 'string', 'max:64'],
             "{$prefix}.audio.title" => ['sometimes', 'nullable', 'string', 'max:255'],
             "{$prefix}.audio.artist" => ['sometimes', 'nullable', 'string', 'max:255'],
             "{$prefix}.audio.cover_url" => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
@@ -168,22 +168,6 @@ class PostPlatformMetaRules
             ->all();
 
         return array_intersect_key($meta, array_flip($known));
-    }
-
-    /**
-     * The meta to store on an edited target: the known keys of `$meta` plus the
-     * system keys already stored on the target.
-     *
-     * @param  array<string, mixed>  $stored
-     * @param  array<string, mixed>  $meta
-     * @return array<string, mixed>
-     */
-    public static function forStorage(array $stored, array $meta): array
-    {
-        return [
-            ...self::onlyKnown($meta),
-            ...array_intersect_key($stored, array_flip(self::SYSTEM_KEYS)),
-        ];
     }
 
     /**
@@ -519,8 +503,8 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Music needs an Instagram account connected through Facebook, and
-     * Instagram refuses a trial reel that has collaborators.
+     * Music needs a track id and an Instagram account connected through
+     * Facebook, and Instagram refuses a trial reel that has collaborators.
      *
      * @return array{0: string, 1: string}|null
      */
@@ -528,6 +512,7 @@ class PostPlatformMetaRules
     {
         return match (true) {
             $platform === Platform::Instagram && filled(data_get($meta, 'audio.id')) => ['audio', trans('posts.form.instagram.music.requires_facebook')],
+            filled(data_get($meta, 'audio')) && blank(data_get($meta, 'audio.id')) => ['audio.id', trans('validation.required', ['attribute' => 'audio id'])],
             filled(data_get($meta, 'trial_graduation')) && filled(data_get($meta, 'collaborators')) => ['trial_graduation', trans('posts.form.instagram.trial_reel.no_collaborators')],
             default => null,
         };

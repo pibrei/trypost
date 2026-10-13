@@ -89,6 +89,21 @@ test('scheduling refuses a trial reel with collaborators and music without faceb
     'music on instagram login' => [Platform::Instagram, ['audio' => ['id' => 'audio-1']], 'audio', 'posts.form.instagram.music.requires_facebook'],
 ]);
 
+test('scheduling refuses music without a track id on the web, api and mcp', function (string $surface) {
+    $post = instagramSettingsParityReel(Platform::InstagramFacebook);
+
+    $response = instagramSettingsParityUpdate($surface, $post, [
+        'meta' => ['audio' => ['title' => 'Song']],
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]);
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors()
+        : $response->assertUnprocessable()->assertJsonValidationErrors('meta.audio.id');
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
 test('collaborators beyond three and an unknown trial strategy are refused on the web, api and mcp', function (string $surface, array $meta, string $field) {
     $post = instagramSettingsParityReel(Platform::Instagram);
 

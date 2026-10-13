@@ -55,7 +55,7 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import ComposerAccountChip from '@/components/posts/composer/ComposerAccountChip.vue';
 import ComposerAccountOptions from '@/components/posts/composer/ComposerAccountOptions.vue';
 import ComposerAccountStack from '@/components/posts/composer/ComposerAccountStack.vue';
-import ComposerBackConfirmDialog from '@/components/posts/composer/ComposerBackConfirmDialog.vue';
+import ComposerDiscardDialog from '@/components/posts/composer/ComposerDiscardDialog.vue';
 import ComposerEditorToolbar from '@/components/posts/composer/ComposerEditorToolbar.vue';
 import ComposerLinkCard from '@/components/posts/composer/ComposerLinkCard.vue';
 import ComposerNetworkCard from '@/components/posts/composer/ComposerNetworkCard.vue';
@@ -92,7 +92,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import UnsavedChangesDialog from '@/components/UnsavedChangesDialog.vue';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
@@ -1952,16 +1951,17 @@ const discardUnfinishedPost = (): void => {
     resumeOpen.value = false;
 };
 
+const closeComposer = (): void => emit('update:open', false);
+
 const unsavedChanges = useComposerUnsavedChanges({
     editingSavedPost: Boolean(props.initialPost || props.postId),
     isOpen: () => props.open,
-    close: () => emit('update:open', false),
+    close: closeComposer,
     composition,
     scheduleMode: () => scheduleMode.value,
 });
 
-const close = (): void =>
-    unsavedChanges.guard(() => emit('update:open', false));
+const close = (): void => unsavedChanges.guard(closeComposer);
 
 const onDialogOpenChange = (value: boolean): void => {
     if (value) {
@@ -3488,13 +3488,25 @@ const onDialogOpenChange = (value: boolean): void => {
         v-model:open="unsplashOpen"
         @picked="onUnsplashPicked"
     />
-    <UnsavedChangesDialog
+    <ComposerDiscardDialog
         v-model:open="unsavedChanges.confirming.value"
-        @discard="unsavedChanges.discard"
-        @keep="unsavedChanges.keepEditing"
+        :title="$t('common.unsaved_changes.title')"
+        :description="$t('common.unsaved_changes.description')"
+        :action="$t('common.unsaved_changes.discard')"
+        test-id="unsaved-changes-dialog"
+        cancel-test-id="unsaved-changes-keep"
+        action-test-id="unsaved-changes-discard"
+        @confirm="unsavedChanges.discard"
+        @cancel="unsavedChanges.keepEditing"
     />
-    <ComposerBackConfirmDialog
+    <ComposerDiscardDialog
         v-model:open="confirmingBack"
+        :title="$t('posts.composer.back_confirm.title')"
+        :description="$t('posts.composer.back_confirm.description')"
+        :action="$t('posts.composer.back_confirm.confirm')"
+        test-id="composer-back-confirm"
+        cancel-test-id="composer-back-cancel"
+        action-test-id="composer-back-confirm-go"
         @confirm="goBackToSharedStep"
     />
     <ResumeUnfinishedPostDialog

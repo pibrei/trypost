@@ -1,7 +1,7 @@
 import { nextTick, ref, watch } from 'vue';
 
+import { useUnsavedChanges } from '@/composables/composer/useUnsavedChanges';
 import type { usePostComposition } from '@/composables/usePostComposition';
-import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 import { PostStatus } from '@/types/post';
 
 interface ComposerUnsavedChangesOptions {

@@ -206,7 +206,7 @@ class UpdatePost
                 'schedule_mode' => $mode,
                 ...PostApproval::transition($previousStatus, $storedStatus, $actor, $pending ? $position : null),
                 'content_type' => $destination['content_type'],
-                'meta' => PostMeta::forChannel($channel, PostPlatformMetaRules::forStorage($post->meta ?? [], $destination['meta'])),
+                'meta' => PostMeta::forChannel($channel, $destination['meta'], $post->meta ?? []),
             ]);
             SyncOwnedMedia::execute($post, $destination['media'], $batch);
 

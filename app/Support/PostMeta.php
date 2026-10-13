@@ -7,12 +7,15 @@ namespace App\Support;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use Illuminate\Support\Arr;
 
 /**
  * The meta a post stores for its channel, on every create and update: the
- * format cleaned up (`PostPlatformMetaRules::normalize`), then what the meta
- * names from the channel's own data filled in, so the web, the API and MCP
- * store the same thing from an id alone. One arm per network that needs it.
+ * format cleaned up (`PostPlatformMetaRules::normalize`), the system keys the
+ * post already had (Telegram `reactions`),
+ * then what the meta names from the channel's own data filled in, so the web,
+ * the API and MCP store the same thing from an id alone. One arm per network
+ * that needs it.
  *
  * A lookup that does not find the id leaves the derived value out: saving
  * never fails over a display name.
@@ -21,11 +24,15 @@ class PostMeta
 {
     /**
      * @param  array<string, mixed>  $meta
+     * @param  array<string, mixed>  $stored  the meta the post had before this save
      * @return array<string, mixed>
      */
-    public static function forChannel(SocialAccount $account, array $meta): array
+    public static function forChannel(SocialAccount $account, array $meta, array $stored = []): array
     {
-        $meta = PostPlatformMetaRules::normalize($meta);
+        $meta = [
+            ...PostPlatformMetaRules::normalize($meta),
+            ...Arr::only($stored, PostPlatformMetaRules::SYSTEM_KEYS),
+        ];
 
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),
@@ -45,7 +52,7 @@ class PostMeta
      */
     private static function withDiscordChannelName(SocialAccount $account, array $meta): array
     {
-        $meta = array_diff_key($meta, ['channel_name' => true]);
+        $meta = Arr::except($meta, 'channel_name');
         $channelId = data_get($meta, 'channel_id');
 
         if (blank($channelId)) {
