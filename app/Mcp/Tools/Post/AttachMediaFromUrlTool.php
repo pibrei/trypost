@@ -9,6 +9,7 @@ use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
+use App\Support\PostMediaRules;
 use App\Support\Requests\Post\PostMediaRequestRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -35,7 +36,10 @@ class AttachMediaFromUrlTool extends Tool
             return $denied;
         }
 
-        $validated = $request->validate(PostMediaRequestRules::attachFromUrl());
+        $validated = $request->validate([
+            ...PostMediaRequestRules::attachFromUrl(),
+            'urls.*.meta' => PostMediaRules::metaRules(),
+        ]);
 
         try {
             $result = app(MediaAttacher::class)->attachFromUrls(
@@ -65,6 +69,7 @@ class AttachMediaFromUrlTool extends Tool
                 ->items($schema->object(fn ($u) => [
                     'url' => $u->string()->required()->description('Public HTTP/HTTPS URL of an image, video, or PDF.'),
                     'alt' => $u->string()->description('Optional accessibility alt text for the image (ignored for video/PDF, which have no alt text).'),
+                    'meta' => $u->object()->description('Optional per-item settings: user_tags (Instagram feed images only: up to 20 of {username, x, y}, x and y between 0 and 1 from the top-left corner), cover_offset_ms (video cover frame in milliseconds, for content types with supports_video_cover).'),
                 ]))
                 ->required()
                 ->description('Media to attach. Max 10 per call. Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf. The server per-type size ceilings apply on download; stricter per-network caps apply at schedule/publish.'),

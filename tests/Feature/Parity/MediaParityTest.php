@@ -106,6 +106,44 @@ test('attaching an upload gives the same media through api and mcp', function ()
         ->and($mcpPost->ownedMedia()->count())->toBe(1);
 });
 
+test('people tagged while attaching an upload or a url are stored the same through api and mcp', function () {
+    Http::fake(['example.com/*' => fn () => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200, ['Content-Type' => 'image/png'])]);
+    $tags = [['username' => 'alice', 'x' => 0.25, 'y' => 0.5], ['username' => 'bob', 'x' => 0.75, 'y' => 0.5]];
+    $posts = collect(['api upload', 'mcp upload', 'api url', 'mcp url'])->mapWithKeys(fn (string $leg): array => [$leg => mediaParityPost($this)]);
+
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-upload', $posts['api upload']), ['upload_token' => mediaParityUpload($this)->upload_token, 'meta' => ['user_tags' => $tags]])
+        ->assertSuccessful();
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-url', $posts['api url']), ['urls' => [['url' => 'https://example.com/a.png', 'meta' => ['user_tags' => $tags]]]])
+        ->assertSuccessful();
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, ['post_id' => $posts['mcp upload']->id, 'upload_token' => mediaParityUpload($this)->upload_token, 'meta' => ['user_tags' => $tags]])
+        ->assertOk();
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, ['post_id' => $posts['mcp url']->id, 'urls' => [['url' => 'https://example.com/a.png', 'meta' => ['user_tags' => $tags]]]])
+        ->assertOk();
+
+    expect($posts->map(fn (Post $post): mixed => data_get($post->fresh()->media, '0.meta.user_tags'))->all())
+        ->toEqual(['api upload' => $tags, 'mcp upload' => $tags, 'api url' => $tags, 'mcp url' => $tags]);
+});
+
+test('more than twenty people tagged while attaching are refused through api and mcp', function () {
+    $tags = collect(range(1, 21))->map(fn (int $index): array => ['username' => "person{$index}", 'x' => 0.5, 'y' => 0.5])->all();
+    $apiPost = mediaParityPost($this);
+    $mcpPost = mediaParityPost($this);
+
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-upload', $apiPost), ['upload_token' => mediaParityUpload($this)->upload_token, 'meta' => ['user_tags' => $tags]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('meta');
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, ['post_id' => $mcpPost->id, 'upload_token' => mediaParityUpload($this)->upload_token, 'meta' => ['user_tags' => $tags]])
+        ->assertHasErrors();
+
+    expect($apiPost->fresh()->media)->toBeEmpty()->and($mcpPost->fresh()->media)->toBeEmpty();
+});
+
 test('an expired or unknown upload token is refused by both surfaces', function () {
     $apiPost = mediaParityPost($this);
     $mcpPost = mediaParityPost($this);
