@@ -102,3 +102,19 @@ test('collaborators beyond three and an unknown trial strategy are refused on th
     'four collaborators' => [['collaborators' => ['a', 'b', 'c', 'd']], 'collaborators'],
     'unknown trial strategy' => [['trial_graduation' => 'SOMETIMES'], 'trial_graduation'],
 ]);
+
+test('a content type that is not text is refused with a validation error on the web, api and mcp', function (string $surface) {
+    $post = instagramSettingsParityReel(Platform::Instagram);
+
+    $response = instagramSettingsParityUpdate($surface, $post, [
+        'content_type' => 5,
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['audio' => ['id' => 'audio-1']],
+    ]);
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors()
+        : $response->assertUnprocessable()->assertJsonValidationErrors('content_type');
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);

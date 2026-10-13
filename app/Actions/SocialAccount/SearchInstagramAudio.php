@@ -171,7 +171,8 @@ class SearchInstagramAudio
     /**
      * The music search answers with the closest tracks of the catalogue licensed
      * to third parties, related or not, when the searched artist is not in it;
-     * only a track naming every searched word is kept.
+     * only a track naming every searched word is kept. A word matches as typed
+     * or without accents, so "cafe" finds "Café" and "夜に駆ける" still counts.
      *
      * @param  array{title: string, artist: string|null}  $track
      */
@@ -179,10 +180,12 @@ class SearchInstagramAudio
     {
         $title = data_get($track, 'title');
         $artist = data_get($track, 'artist');
-        $haystack = Str::lower(Str::ascii("{$title} {$artist}"));
+        $haystack = Str::lower("{$title} {$artist}");
+        $asciiHaystack = Str::lower(Str::ascii($haystack));
 
-        return collect(preg_split('/\s+/', Str::lower(Str::ascii($query))) ?: [])
+        return collect(preg_split('/\s+/u', Str::lower($query)) ?: [])
             ->filter()
-            ->every(fn (string $word): bool => str_contains($haystack, $word));
+            ->every(fn (string $word): bool => str_contains($haystack, $word)
+                || (($asciiWord = Str::ascii($word)) !== '' && str_contains($asciiHaystack, $asciiWord)));
     }
 }

@@ -32,14 +32,12 @@ class InstagramAudio
     {
         $key = "instagram-audio:{$account->workspace_id}";
 
-        if (RateLimiter::tooManyAttempts($key, self::LOOKUPS_PER_MINUTE)) {
+        if (! RateLimiter::attempt($key, self::LOOKUPS_PER_MINUTE, fn (): bool => true, 60)) {
             throw new ThrottleRequestsException(
                 __('posts.form.instagram.music.too_many_searches'),
                 headers: ['Retry-After' => RateLimiter::availableIn($key)],
             );
         }
-
-        RateLimiter::hit($key, 60);
     }
 
     /**

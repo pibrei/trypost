@@ -299,3 +299,24 @@ test('a failed creator picture lookup is skipped only by the account whose looku
         ->assertOk()
         ->assertJsonPath('0.cover_url', 'https://example.com/creator.jpg');
 });
+
+test('a search in a script without latin letters keeps only the music naming it', function (string $query, string $match) {
+    Http::fake([
+        "{$this->graph}/ig_audio?audio_type=music*" => Http::response(['audio' => [
+            ['audio_id' => 'unrelated', 'title' => 'Grudge', 'display_artist' => 'Tash'],
+            ['audio_id' => 'match', 'title' => $match, 'display_artist' => 'Artist'],
+        ]]),
+        "{$this->graph}/ig_audio?audio_type=original_sound*" => Http::response(['audio' => []]),
+    ]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.instagram.audio.index', ['account' => $this->account, 'q' => $query]))
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.id', 'match');
+})->with([
+    'japanese' => ['夜に駆ける', '夜に駆ける'],
+    'korean' => ['봄날', '봄날 (Spring Day)'],
+    'mixed with latin' => ['yoasobi 夜に駆ける', 'YOASOBI - 夜に駆ける'],
+    'accents' => ['cafe', 'Café Tacvba'],
+]);

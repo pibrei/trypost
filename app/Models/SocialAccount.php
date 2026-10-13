@@ -291,8 +291,8 @@ class SocialAccount extends Model
 
         $this->instagramAccountIdLookedUp = true;
 
-        $fetched = rescue(fn (): mixed => Http::connectTimeout(3)
-            ->timeout(8)
+        $fetched = rescue(fn (): mixed => Http::connectTimeout(2)
+            ->timeout(4)
             ->get(config('trypost.platforms.instagram.graph_api').'/me', [
                 'fields' => 'user_id',
                 'access_token' => $this->access_token,
