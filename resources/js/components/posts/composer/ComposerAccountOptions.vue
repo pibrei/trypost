@@ -18,20 +18,19 @@ const emit = defineEmits<{
     (event: 'toggle-all', accounts: ComposerAccount[]): void;
 }>();
 
+const searchableText = (account: ComposerAccount): string =>
+    [account.display_name, account.username, getPlatformLabel(account.platform)]
+        .join(' ')
+        .toLocaleLowerCase();
+
 const visibleAccounts = computed(() => {
     const query = search.value.trim().toLocaleLowerCase();
 
-    return query
-        ? props.accounts.filter((account) =>
-              [
-                  account.display_name,
-                  account.username,
-                  getPlatformLabel(account.platform),
-              ].some((value) =>
-                  (value ?? '').toLocaleLowerCase().includes(query),
-              ),
-          )
-        : props.accounts;
+    if (!query) return props.accounts;
+
+    return props.accounts.filter((account) =>
+        searchableText(account).includes(query),
+    );
 });
 
 const isSelected = (account: ComposerAccount): boolean =>
