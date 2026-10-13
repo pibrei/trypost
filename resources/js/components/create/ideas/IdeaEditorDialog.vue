@@ -43,6 +43,7 @@ import { mediaUploadLimits, useMediaUpload } from '@/composables/useMediaUpload'
 import { editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute } from '@/lib/mediaType';
+import { filterBySearch } from '@/lib/search';
 import { store, update } from '@/routes/app/create/ideas';
 import {
     columnKey,
@@ -52,7 +53,6 @@ import {
     type IdeaStage,
 } from '@/types/idea';
 import type { MediaItem } from '@/types/media';
-import { filterBySearch } from '@/lib/search';
 
 const props = defineProps<{
     editor: IdeaEditorState;

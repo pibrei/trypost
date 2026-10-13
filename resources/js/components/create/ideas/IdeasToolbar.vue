@@ -9,8 +9,8 @@ import { computed } from 'vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { IdeaStage, IdeaLabel, IdeasView } from '@/types/idea';
 import { matchesSearch } from '@/lib/search';
+import type { IdeaStage, IdeaLabel, IdeasView } from '@/types/idea';
 
 const props = defineProps<{
     view: IdeasView;

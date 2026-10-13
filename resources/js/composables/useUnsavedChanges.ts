@@ -10,12 +10,19 @@ import { onScopeDispose, ref, watch } from 'vue';
  *
  * The back button cannot be cancelled, so while there is unsaved work the
  * current history entry is doubled: back lands on the copy (an entry without
- * Inertia state, which Inertia leaves on the same page) and asks from there.
+ * Inertia state, which Inertia leaves on the same page), the entry is doubled
+ * again at once so a second back or a forward is caught too, and it asks from
+ * there. Discarding after back runs `close` rather than going back in
+ * history, since a page opened from a link may have nothing to go back to.
  */
-export const useUnsavedChanges = (isDirty: () => boolean) => {
+export const useUnsavedChanges = (
+    isDirty: () => boolean,
+    close: () => void,
+) => {
     const confirming = ref(false);
     let pending: (() => void) | null = null;
     let leaving = false;
+    let discarded = false;
 
     const leave = (action: () => void): void => {
         leaving = true;
@@ -26,8 +33,10 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
         }
     };
 
+    const holds = (): boolean => !leaving && !discarded && isDirty();
+
     const guard = (action: () => void): void => {
-        if (leaving || !isDirty()) {
+        if (!holds()) {
             action();
             return;
         }
@@ -66,13 +75,14 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
         const action = pending;
         pending = null;
         confirming.value = false;
-        if (action) releaseBack(() => leave(action));
+        if (!action) return;
+        discarded = true;
+        releaseBack(() => leave(action));
     };
 
     const keepEditing = (): void => {
         pending = null;
         confirming.value = false;
-        if (isDirty()) holdBack();
     };
 
     const onPopState = (): void => {
@@ -90,9 +100,10 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
             return;
         }
 
-        if (!holdingBack || leaving) return;
+        if (!holdingBack || !holds()) return;
         holdingBack = false;
-        guard(() => window.history.back());
+        holdBack();
+        guard(close);
     };
 
     watch(isDirty, (dirty) => (dirty ? holdBack() : releaseBack()));
@@ -101,13 +112,12 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
         const visit = event.detail.visit;
 
         if (
-            leaving ||
             visit.method !== 'get' ||
             visit.only.length > 0 ||
             visit.except.length > 0 ||
             visit.prefetch ||
             visit.url.href === window.location.href ||
-            !isDirty()
+            !holds()
         ) {
             return;
         }
@@ -123,7 +133,7 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
     });
 
     const onBeforeUnload = (event: BeforeUnloadEvent): void => {
-        if (leaving || !isDirty()) return;
+        if (!holds()) return;
         event.preventDefault();
         event.returnValue = '';
     };

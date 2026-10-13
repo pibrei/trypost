@@ -16,9 +16,9 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { detectBrowserLanguage } from '@/lib/detectPreferences';
+import { matchesSearch } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import type { Language } from '@/types';
-import { matchesSearch } from '@/lib/search';
 
 const props = defineProps<{
     languages: Language[];

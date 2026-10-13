@@ -9,11 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { orderChannels } from '@/composables/useChannelOrder';
+import { matchesSearch } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import type { User } from '@/types';
 import { channelName, type SidebarChannel } from '@/types/channel';
 import type { TimezoneOption } from '@/types/posting-schedule';
-import { matchesSearch } from '@/lib/search';
 
 interface Suggestion {
     option: TimezoneOption;

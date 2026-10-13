@@ -8,12 +8,12 @@ import LabelForm from '@/components/labels/LabelForm.vue';
 import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { matchesSearch } from '@/lib/search';
 import {
     index as labelsIndex,
     store as labelsStore,
 } from '@/routes/app/labels';
 import type { FlashData } from '@/types';
-import { matchesSearch } from '@/lib/search';
 
 interface Label {
     id: string;

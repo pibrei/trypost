@@ -476,3 +476,43 @@ test('a discord channel missing from the list keeps its stored name', function (
     $page->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toMatchArray(['channel_id' => '999', 'channel_name' => 'announcements']);
 });
+
+test('pressing back again while the unsaved changes question is open keeps the edit and still asks', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    $page->back();
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+
+    $page->assertVisible('@unsaved-changes-dialog')
+        ->click('@unsaved-changes-keep');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+
+    $page->assertVisible('@post-composer-dialog')
+        ->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'false')
+        ->assertNoJavaScriptErrors();
+});
+
+test('discarding after back closes a post opened straight from a link, with no page to go back to', function () {
+    $post = seedUnsavedChangesReel();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForUnsavedChangesTestId($page, 'sidebar-logo');
+
+    $page->assertVisible('@sidebar-logo')
+        ->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertQueryStringMissing('edit')
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->meta)->toBe([]);
+});

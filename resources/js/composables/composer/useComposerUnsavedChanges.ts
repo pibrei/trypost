@@ -8,7 +8,8 @@ interface ComposerUnsavedChangesOptions {
     /** Only an edit of a saved post can lose work: a new post is autosaved. */
     editingSavedPost: boolean;
     isOpen: () => boolean;
-    isSubmitting: () => boolean;
+    /** Closes the composer: what discarding after the browser's back button does. */
+    close: () => void;
     composition: ReturnType<typeof usePostComposition>;
     /** The schedule picked in the composer: now, custom, next or top. */
     scheduleMode: () => string;
@@ -73,12 +74,11 @@ export const useComposerUnsavedChanges = (
         options.isOpen() &&
         interacted.value &&
         !saved.value &&
-        !options.isSubmitting() &&
         opened.value !== null &&
         snapshot() !== opened.value;
 
     return {
-        ...useUnsavedChanges(hasUnsavedChanges),
+        ...useUnsavedChanges(hasUnsavedChanges, options.close),
         markInteracted,
         markSaved,
     };

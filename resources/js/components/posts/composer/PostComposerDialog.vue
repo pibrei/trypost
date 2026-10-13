@@ -1955,11 +1955,10 @@ const discardUnfinishedPost = (): void => {
 const unsavedChanges = useComposerUnsavedChanges({
     editingSavedPost: Boolean(props.initialPost || props.postId),
     isOpen: () => props.open,
-    isSubmitting: () => props.submitting,
+    close: () => emit('update:open', false),
     composition,
     scheduleMode: () => scheduleMode.value,
 });
-
 
 const close = (): void =>
     unsavedChanges.guard(() => emit('update:open', false));

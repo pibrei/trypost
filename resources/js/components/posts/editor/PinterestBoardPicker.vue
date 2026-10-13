@@ -21,8 +21,8 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { usePinterestBoards } from '@/composables/usePinterestBoards';
-import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import { filterBySearch } from '@/lib/search';
+import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 
 const props = withDefaults(
     defineProps<{
