@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ComposerAccount } from '@/composables/usePostComposition';
-import { matchesSearch } from '@/lib/search';
+import { filterBySearch } from '@/lib/search';
 
 const props = defineProps<{
     accounts: ComposerAccount[];
@@ -20,13 +20,11 @@ const emit = defineEmits<{
 }>();
 
 const visibleAccounts = computed(() =>
-    props.accounts.filter((account) =>
-        matchesSearch(search.value, [
-            account.display_name,
-            account.username,
-            getPlatformLabel(account.platform),
-        ]),
-    ),
+    filterBySearch(props.accounts, search.value, (account) => [
+        account.display_name,
+        account.username,
+        getPlatformLabel(account.platform),
+    ]),
 );
 
 const isSelected = (account: ComposerAccount): boolean =>

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { User } from '@/types';
 import { channelName, type SidebarChannel } from '@/types/channel';
 import type { TimezoneOption } from '@/types/posting-schedule';
+import { matchesSearch } from '@/lib/search';
 
 interface Suggestion {
     option: TimezoneOption;
@@ -80,11 +81,8 @@ const suggestions = computed<Suggestion[]>(() => {
     return [...rows.values()];
 });
 
-const matches = (option: TimezoneOption): boolean => {
-    const term = search.value.trim().toLowerCase();
-
-    return term === '' || `${option.label} ${option.value} ${option.offset}`.toLowerCase().includes(term);
-};
+const matches = (option: TimezoneOption): boolean =>
+    matchesSearch(search.value, [option.label, option.value, option.offset]);
 
 const suggestedValues = computed(() => new Set(suggestions.value.map((suggestion) => suggestion.option.value)));
 const visibleSuggestions = computed(() => suggestions.value.filter((suggestion) => matches(suggestion.option)));

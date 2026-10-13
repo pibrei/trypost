@@ -241,3 +241,26 @@ test('the time format offers two clocks, keeps its value after a language change
     $page->assertScript("document.body.innerText.includes('2 PM')", true)
         ->assertNoJavaScriptErrors();
 });
+
+test('the time zone search ignores accents and matches each word typed', function () {
+    $user = preferencesUser(['timezone' => 'UTC']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.settings.preferences'))->withTimezone('UTC');
+    waitForPreferencesTestId($page, 'preferences-timezone-trigger');
+    $page->click('@preferences-timezone-trigger');
+    waitForPreferencesTestId($page, 'preferences-timezone-search');
+
+    $page->type('@preferences-timezone-search', 'sao paulo');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100 && !document.querySelector('[data-testid^="preferences-timezone-option-America-Sao"]'); i++) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })()
+    JS);
+
+    $page->assertScript('Boolean(document.querySelector(\'[data-testid^="preferences-timezone-option-America-Sao"]\'))', true)
+        ->assertMissing('@preferences-timezone-option-UTC')
+        ->assertNoJavaScriptErrors();
+});

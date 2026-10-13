@@ -18,6 +18,7 @@ import {
 import { detectBrowserLanguage } from '@/lib/detectPreferences';
 import { cn } from '@/lib/utils';
 import type { Language } from '@/types';
+import { matchesSearch } from '@/lib/search';
 
 const props = defineProps<{
     languages: Language[];
@@ -35,14 +36,8 @@ const selected = computed(() =>
     props.languages.find((language) => language.code === model.value),
 );
 
-const matches = (language: Language): boolean => {
-    const term = search.value.trim().toLocaleLowerCase();
-
-    return (
-        term === '' ||
-        `${language.name} ${language.code}`.toLocaleLowerCase().includes(term)
-    );
-};
+const matches = (language: Language): boolean =>
+    matchesSearch(search.value, [language.name, language.code]);
 
 const browserLanguage = computed(() =>
     props.languages.find(

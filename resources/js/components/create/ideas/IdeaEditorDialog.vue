@@ -52,6 +52,7 @@ import {
     type IdeaStage,
 } from '@/types/idea';
 import type { MediaItem } from '@/types/media';
+import { filterBySearch } from '@/lib/search';
 
 const props = defineProps<{
     editor: IdeaEditorState;
@@ -186,15 +187,9 @@ const currentStage = computed(
         props.stages.find((stage) => stage.id === form.idea_stage_id) ?? null,
 );
 
-const filteredStages = computed(() => {
-    const query = stageSearch.value.trim().toLocaleLowerCase();
-
-    return query
-        ? props.stages.filter((stage) =>
-              stage.name.toLocaleLowerCase().includes(query),
-          )
-        : props.stages;
-});
+const filteredStages = computed(() =>
+    filterBySearch(props.stages, stageSearch.value, (stage) => [stage.name]),
+);
 
 const availableLabels = ref([...props.labels]);
 
