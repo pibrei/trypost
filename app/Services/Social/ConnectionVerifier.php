@@ -206,7 +206,8 @@ class ConnectionVerifier
             Platform::LinkedIn => $this->verifyLinkedIn($account),
             Platform::LinkedInPage => $this->verifyLinkedInPage($account),
             Platform::X => $this->verifyX($account),
-            Platform::Instagram, Platform::InstagramFacebook => $this->verifyInstagram($account),
+            Platform::Instagram => $this->verifyInstagram($account),
+            Platform::InstagramFacebook => $this->verifyInstagramFacebook($account),
             Platform::Facebook => $this->verifyFacebook($account),
             Platform::Threads => $this->verifyThreads($account),
             Platform::TikTok => $this->verifyTikTok($account),
@@ -644,22 +645,40 @@ class ConnectionVerifier
         );
     }
 
+    /**
+     * An Instagram Login token, checked on graph.instagram.com. Its `user_id`
+     * is the professional account id, kept for matching the same account
+     * connected through Facebook.
+     */
     private function verifyInstagram(SocialAccount $account): bool
     {
-        // Basic Instagram tokens hit graph.instagram.com; Instagram via
-        // Facebook Business uses a Facebook Page token, which only validates
-        // against graph.facebook.com — using the wrong endpoint produces a
-        // false-positive "token expired".
-        $baseUrl = $account->platform->instagramGraphBaseUrl();
-
-        $response = Http::get("{$baseUrl}/me", [
-            'fields' => $account->platform === Platform::Instagram ? 'id,username,user_id' : 'id,username',
+        $response = Http::get(config('trypost.platforms.instagram.graph_api').'/me', [
+            'fields' => 'id,username,user_id',
             'access_token' => $account->access_token,
         ]);
 
         if ($response->successful()) {
             $this->rememberInstagramAccountId($account, $response->json('user_id'));
 
+            return true;
+        }
+
+        throw GraphError::classifyVerifyFailure($response, 'Instagram');
+    }
+
+    /**
+     * An Instagram account connected through Facebook holds a Page token, which
+     * only validates on graph.facebook.com (graph.instagram.com reports it as
+     * expired). Its `/me` is the Page, which has no `user_id`.
+     */
+    private function verifyInstagramFacebook(SocialAccount $account): bool
+    {
+        $response = Http::get(config('trypost.platforms.instagram-facebook.graph_api').'/me', [
+            'fields' => 'id,username',
+            'access_token' => $account->access_token,
+        ]);
+
+        if ($response->successful()) {
             return true;
         }
 
