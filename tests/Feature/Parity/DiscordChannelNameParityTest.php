@@ -11,6 +11,7 @@ use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 
 beforeEach(function () {
@@ -45,7 +46,7 @@ function discordChannelNameUpdate(string $surface, Post $post, array $meta): voi
     $payload = ['status' => Status::Draft->value, 'content' => $post->content, 'content_type' => ContentType::DiscordMessage->value, 'meta' => $meta];
 
     match ($surface) {
-        'web' => test()->actingAs(test()->user)->putJson(route('app.posts.update', $post), [...$payload, 'media' => []])->assertSessionHasNoErrors(),
+        'web' => test()->actingAs(test()->user)->put(route('app.posts.update', $post), [...$payload, 'media' => []])->assertSessionHasNoErrors()->assertRedirect(),
         'api' => test()->withHeaders(parityApi(test()->token))->putJson(route('api.posts.update', $post), $payload)->assertOk(),
         'mcp' => TryPostServer::actingAs(test()->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, ...$payload])->assertOk(),
     };
@@ -127,4 +128,24 @@ test('duplicating a discord post keeps its channel name without asking discord',
 
     $copy = Post::query()->where('id', '!=', $post->id)->sole();
     expect($copy->meta)->toMatchArray(['channel_id' => '111', 'channel_name' => 'general']);
+});
+
+test('the channel list the web loads is the one a later save reads the name from', function () {
+    config(['trypost.platforms.discord.bot_token' => 'BOTTOKEN', 'services.discord.client_id' => '999000111']);
+    $guild = (string) $this->discord->platform_user_id;
+    $api = config('trypost.platforms.discord.api');
+    Http::fake([
+        "{$api}/guilds/{$guild}/channels" => Http::response([['id' => '111', 'name' => 'general', 'type' => 0]]),
+        "{$api}/guilds/{$guild}/roles" => Http::response([['id' => $guild, 'permissions' => '3072']]),
+        "{$api}/guilds/{$guild}/members/*" => Http::response(['roles' => []]),
+    ]);
+
+    $this->actingAs($this->user)->getJson(route('app.discord.channels', $this->discord))->assertOk();
+    auth()->forgetGuards();
+    Http::fake();
+
+    $post = discordChannelNameCreate('api', ['channel_id' => '111']);
+
+    expect(data_get($post->meta, 'channel_name'))->toBe('general');
+    Http::assertNothingSent();
 });

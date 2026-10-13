@@ -39,16 +39,6 @@ class DiscordClient
     }
 
     /**
-     * The channels of a guild the bot can actually post into: postable type
-     * (text/announcement) AND the bot has VIEW_CHANNEL + SEND_MESSAGES there.
-     *
-     * @return list<array{id: string, name: string}>
-     *
-     * @throws PlatformUnavailableException when the lookup fails transiently, so
-     *                                      callers (e.g. the publish-time channel guard) retry instead of
-     *                                      treating an empty result as "channel not found".
-     */
-    /**
      * The guild's channels when a recent `channels()` call left them in the
      * cache, without asking Discord: null when they are not cached.
      *
@@ -61,6 +51,16 @@ class DiscordClient
         return is_array($channels) ? $channels : null;
     }
 
+    /**
+     * The channels of a guild the bot can actually post into: postable type
+     * (text/announcement) AND the bot has VIEW_CHANNEL + SEND_MESSAGES there.
+     *
+     * @return list<array{id: string, name: string}>
+     *
+     * @throws PlatformUnavailableException when the lookup fails transiently, so
+     *                                      callers (e.g. the publish-time channel guard) retry instead of
+     *                                      treating an empty result as "channel not found".
+     */
     public function channels(string $guildId): array
     {
         // Cached per guild for 5 minutes — channels change rarely and this runs

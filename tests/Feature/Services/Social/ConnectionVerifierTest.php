@@ -1577,3 +1577,16 @@ test('remembering the instagram account id keeps meta saved meanwhile by a recon
 
     expect($account->fresh()->meta)->toEqual(['username' => 'trypost', 'account_type' => 'BUSINESS', 'ig_user_id' => '17841400000000001']);
 });
+
+test('remembering the instagram account id works on an account with empty meta', function (?array $meta) {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => 'app-scoped-1', 'username' => 'trypost', 'user_id' => '17841400000000001']),
+    ]);
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+        'meta' => $meta,
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue()
+        ->and($account->fresh()->meta)->toEqual(['ig_user_id' => '17841400000000001']);
+})->with(['no meta' => [null], 'empty meta' => [[]]]);

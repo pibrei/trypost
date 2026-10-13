@@ -46,8 +46,8 @@ const allSelected = (): boolean => visibleAccounts.value.every(isSelected);
                 v-model="search"
                 type="search"
                 data-testid="composer-account-search"
-                :aria-label="$t('posts.form.discord.search_channel')"
-                :placeholder="$t('posts.form.discord.search_channel')"
+                :aria-label="$t('posts.channel_search_placeholder')"
+                :placeholder="$t('posts.channel_search_placeholder')"
                 class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-subtle-foreground"
             />
         </div>
@@ -111,7 +111,7 @@ const allSelected = (): boolean => visibleAccounts.value.every(isSelected);
                     v-if="!visibleAccounts.length"
                     class="px-2 py-4 text-center text-sm text-muted-foreground"
                 >
-                    {{ $t('posts.form.discord.no_channels') }}
+                    {{ $t('posts.no_channels') }}
                 </p>
             </div>
         </div>

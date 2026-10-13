@@ -94,6 +94,43 @@ test('saving an edited post closes it without asking', function () {
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
 });
 
+test('after saving an edited post two backs leave the list for the page before it, with no dead entry', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
+
+    $page->click('@instagram-share-to-feed')
+        ->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '".unsavedChangesListPath()."'");
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+
+    $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
+        ->assertNoJavaScriptErrors();
+});
+
+test('saving an edited post never moves through history before the saved page lands', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+    $page->script(<<<'JS'
+        (() => {
+            window.__backsFrom = [];
+            const back = window.history.back.bind(window.history);
+            window.history.back = () => { window.__backsFrom.push(location.pathname); back(); };
+        })()
+    JS);
+
+    $page->click('@instagram-share-to-feed')
+        ->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+
+    expect($page->script('window.__backsFrom'))->toBe([unsavedChangesListPath()]);
+    expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
+});
+
 test('closing an untouched post of any network asks nothing, even when its settings fill in on their own', function (Platform $platform, ContentType $contentType, array $meta) {
     Http::fake([
         config('trypost.platforms.pinterest.api').'/boards*' => Http::response(['items' => [['id' => 'board_1', 'name' => 'Ideas']]]),
@@ -232,9 +269,17 @@ test('following an app link away from an edited post asks first and leaves only 
     expect($post->fresh()->meta)->toBe([]);
 });
 
-function openUnsavedChangesFromList(Post $post): mixed
+function unsavedChangesListPath(): string
 {
-    $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1280, 900);
+    return (string) parse_url(route('app.posts.index'), PHP_URL_PATH);
+}
+
+function openUnsavedChangesFromList(Post $post, ?string $from = null): mixed
+{
+    $list = route('app.posts.index', ['tab' => 'drafts']);
+    $page = $from === null
+        ? visit($list)->resize(1280, 900)
+        : visit($from)->resize(1280, 900)->navigate($list);
     waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
     $page->click("@post-edit-{$post->id}");
     waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
@@ -263,7 +308,7 @@ test('the browser back button on an edited post asks first, keeps the edit on ca
     waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
     $page->assertMissing('@post-composer-dialog')
-        ->assertQueryStringMissing('edit')
+        ->assertPathIs(unsavedChangesListPath())
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
 });
@@ -292,7 +337,7 @@ test('after saving an edited post the browser back button does not reopen it or 
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
-        ->assertQueryStringMissing('edit')
+        ->assertPathIs(unsavedChangesListPath())
         ->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
 });
@@ -411,7 +456,7 @@ test('after leaving an edited post through an app link the browser back button r
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
-        ->assertQueryStringMissing('edit')
+        ->assertPathIs(unsavedChangesListPath())
         ->assertNoJavaScriptErrors();
 });
 
@@ -507,12 +552,12 @@ test('discarding after back closes a post opened straight from a link, with no p
     $page->back();
     waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesTestId($page, 'sidebar-logo');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
     $page->assertVisible('@sidebar-logo')
         ->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
-        ->assertQueryStringMissing('edit')
+        ->assertPathIs(unsavedChangesListPath())
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
 });

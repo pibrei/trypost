@@ -741,7 +741,7 @@ test('a repurpose refuses music on an instagram login reel destination when it i
 
     $this->actingAs($user)
         ->post(route('app.repurposes.activate', $draft))
-        ->assertSessionHasErrors('destinations');
+        ->assertSessionHasErrors(['destinations' => __('posts.form.instagram.music.requires_facebook')]);
 
     expect($draft->fresh()->status)->toBe(Status::Draft);
 });

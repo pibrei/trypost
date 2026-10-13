@@ -14,6 +14,8 @@ import { onScopeDispose, ref, watch } from 'vue';
  * again at once so a second back or a forward is caught too, and it asks from
  * there. Discarding after back runs `close` rather than going back in
  * history, since a page opened from a link may have nothing to go back to.
+ * Unmounting while held (a save whose page no longer shows the composer)
+ * steps back onto the copy, so it never leaves a Back that goes nowhere.
  */
 export const useUnsavedChanges = (
     isDirty: () => boolean,
@@ -145,6 +147,10 @@ export const useUnsavedChanges = (
         stopVisits();
         window.removeEventListener('beforeunload', onBeforeUnload);
         window.removeEventListener('popstate', onPopState);
+        if (holdingBack) {
+            holdingBack = false;
+            window.history.back();
+        }
     });
 
     return { confirming, guard, discard, keepEditing, leave };

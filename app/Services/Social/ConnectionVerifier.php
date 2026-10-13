@@ -689,7 +689,8 @@ class ConnectionVerifier
      * Keeps the Instagram professional account id of an Instagram Login
      * account (older accounts were connected before it was stored), so a
      * reconnect through Facebook matches it without asking Instagram. Only
-     * that key is written, so meta saved meanwhile (a reconnect) is kept.
+     * that key is written, so meta saved meanwhile (a reconnect) is kept; an
+     * empty meta, which a JSON path cannot be set on, is written whole.
      */
     private function rememberInstagramAccountId(SocialAccount $account, mixed $instagramAccountId): void
     {
@@ -697,9 +698,17 @@ class ConnectionVerifier
             return;
         }
 
-        SocialAccount::query()->whereKey($account->getKey())->update(['meta->ig_user_id' => (string) $instagramAccountId]);
+        $value = (string) $instagramAccountId;
+        $meta = $account->meta;
+        $query = SocialAccount::query()->whereKey($account->getKey());
 
-        $account->meta = [...($account->meta ?? []), 'ig_user_id' => (string) $instagramAccountId];
+        if (is_array($meta) && $meta !== [] && ! array_is_list($meta)) {
+            $query->update(['meta->ig_user_id' => $value]);
+        } else {
+            $query->update(['meta' => json_encode(['ig_user_id' => $value])]);
+        }
+
+        $account->meta = [...(array) $meta, 'ig_user_id' => $value];
         $account->syncOriginalAttribute('meta');
     }
 
