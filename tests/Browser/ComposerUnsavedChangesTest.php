@@ -638,3 +638,144 @@ test('clicking outside an edited post asks first', function () {
         ->assertVisible('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
 });
+
+test('the list behind an edited post keeps what a reload brought in after backs, leaving and coming back', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $arrived = Post::factory()->forAccount($post->socialAccount, ContentType::InstagramReel)->create([
+        'user_id' => $post->user_id,
+        'content' => 'Arrived while editing',
+        'meta' => [],
+    ]);
+    $page->script("document.getElementById('app').__vue_app__.config.globalProperties.\$inertia.reload({ only: ['queue', 'posts', 'counts', 'hasData', 'channels'], reset: ['posts'] })");
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"post-edit-{$arrived->id}\"]')");
+
+    foreach (range(1, 2) as $attempt) {
+        $page->back();
+        waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+        $page->click('@unsaved-changes-keep');
+        waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    }
+    $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+
+    expect($page->script("Boolean(document.querySelector('[data-testid=\"post-edit-{$arrived->id}\"]'))"))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('jumping further back in history from an edited post leaves without asking or rewriting history', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $length = $page->script('window.history.length');
+    $page->script('window.history.go(-2)');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertPathIs(unsavedChangesListPath());
+    expect($page->script('window.history.length'))->toBe($length)
+        ->and($page->script('window.history.state !== null'))->toBeTrue();
+
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+
+    $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a save that fails validation keeps the edited post open and still asks before closing, then saves once fixed', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+
+    $page->type('@instagram-collaborator-input', 'bad-name!')
+        ->click('@instagram-collaborator-add');
+    waitForUnsavedChangesTestId($page, 'instagram-collaborators-notice');
+    $page->click('@instagram-collaborators-notice-dismiss');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"instagram-collaborators-notice\"]')");
+    $page->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, 'document.body.textContent.includes('.json_encode(__('posts.form.instagram.collaborators.invalid')).')');
+
+    $page->assertSee(__('posts.form.instagram.collaborators.invalid'))
+        ->assertVisible('@post-composer-dialog')
+        ->click('@composer-close');
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    $page->click('@unsaved-changes-keep');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+
+    $page->click('@instagram-collaborator-remove-bad-name!')
+        ->type('@instagram-collaborator-input', 'alice')
+        ->click('@instagram-collaborator-add');
+    waitForUnsavedChangesTestId($page, 'instagram-collaborator-alice');
+    $page->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->back();
+    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice']);
+});
+
+test('undoing the edit after keeping it on back closes without asking and back leaves the post', function () {
+    $post = seedUnsavedChangesReel();
+    $post->update(['meta' => ['share_to_feed' => true]]);
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    $page->click('@unsaved-changes-keep');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'true'");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+
+    $page->click('@composer-close');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->assertMissing('@unsaved-changes-dialog');
+
+    $page->back();
+    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertPathIs(unsavedChangesListPath());
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+
+    $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->meta)->toBe(['share_to_feed' => true]);
+});
+
+test('saving an edited post that was published meanwhile closes it and back does not reopen it', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $post->forceFill(['status' => PostStatus::Published, 'published_at' => now()])->save();
+    $page->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->back();
+    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertPathIs(unsavedChangesListPath())
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->meta)->toBe([]);
+});

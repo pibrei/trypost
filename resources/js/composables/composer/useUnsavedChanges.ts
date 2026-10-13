@@ -14,13 +14,15 @@ import { onScopeDispose, ref, watch } from 'vue';
  * again at once so a second back or a forward is caught too, and it asks from
  * there. Discarding after back runs `close` rather than going back in
  * history, since a page opened from a link may have nothing to go back to.
+ * A jump past the copy (the back button's history menu) lands on an entry
+ * with state: it cannot be held, so the doubling ends and Inertia navigates.
  * Unmounting while held (a save whose page no longer shows the composer)
  * steps back onto the copy, so it never leaves a Back that goes nowhere.
  *
- * Stepping back onto the copy gives it the page's state again. Inertia only
- * fills an entry without state when its page differs from the last one it
- * wrote, which is no longer true once a back was caught, and a copy left
- * without state is a Back that does nothing.
+ * Releasing the hold steps back onto the copy and gives it the page's state
+ * again. Inertia only fills an entry without state when its page differs from
+ * the last one it wrote, which is no longer true once a back was caught, and
+ * a copy left without state is a Back that does nothing.
  */
 export const useUnsavedChanges = (
     isDirty: () => boolean,
@@ -28,19 +30,9 @@ export const useUnsavedChanges = (
 ) => {
     const confirming = ref(false);
     let pending: (() => void) | null = null;
-    let leaving = false;
     let discarded = false;
 
-    const leave = (action: () => void): void => {
-        leaving = true;
-        try {
-            action();
-        } finally {
-            leaving = false;
-        }
-    };
-
-    const holds = (): boolean => !leaving && !discarded && isDirty();
+    const holds = (): boolean => !discarded && isDirty();
 
     const guard = (action: () => void): void => {
         if (!holds()) {
@@ -65,22 +57,9 @@ export const useUnsavedChanges = (
         window.history.pushState(pageState, '', window.location.href);
     };
 
-    /** Steps back onto the copy, remembering the state it gets back. */
-    const stepBackOntoCopy = (): void => {
-        pageState = window.history.state ?? pageState;
-        pageUrl = window.location.href;
-        window.history.back();
-    };
-
-    const restorePageState = (): void => {
-        if (window.history.state === null && pageState !== null) {
-            window.history.replaceState(pageState, '', pageUrl);
-        }
-    };
-
     /**
      * Drops the doubled history entry, then runs `then` once the browser is
-     * back on the page's own entry, so leaving never strands the copy.
+     * back on the copy, so leaving never strands it.
      */
     const releaseBack = (then?: () => void): void => {
         if (!holdingBack) {
@@ -90,7 +69,9 @@ export const useUnsavedChanges = (
         holdingBack = false;
         releasing = true;
         afterRelease = then ?? null;
-        stepBackOntoCopy();
+        pageState = window.history.state ?? pageState;
+        pageUrl = window.location.href;
+        window.history.back();
     };
 
     const discard = (): void => {
@@ -99,7 +80,7 @@ export const useUnsavedChanges = (
         confirming.value = false;
         if (!action) return;
         discarded = true;
-        releaseBack(() => leave(action));
+        releaseBack(action);
     };
 
     const keepEditing = (): void => {
@@ -107,10 +88,12 @@ export const useUnsavedChanges = (
         confirming.value = false;
     };
 
-    const onPopState = (): void => {
+    const onPopState = (event: PopStateEvent): void => {
         if (releasing) {
             releasing = false;
-            restorePageState();
+            if (window.history.state === null && pageState !== null) {
+                window.history.replaceState(pageState, '', pageUrl);
+            }
             const then = afterRelease;
             afterRelease = null;
 
@@ -125,6 +108,7 @@ export const useUnsavedChanges = (
 
         if (!holdingBack || !holds()) return;
         holdingBack = false;
+        if (event.state !== null) return;
         holdBack();
         guard(close);
     };
@@ -170,12 +154,9 @@ export const useUnsavedChanges = (
         window.removeEventListener('popstate', onPopState);
         if (holdingBack) {
             holdingBack = false;
-            window.addEventListener('popstate', restorePageState, {
-                once: true,
-            });
-            stepBackOntoCopy();
+            window.history.back();
         }
     });
 
-    return { confirming, guard, discard, keepEditing, leave };
+    return { confirming, guard, discard, keepEditing };
 };
