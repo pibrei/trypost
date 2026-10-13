@@ -32,8 +32,8 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { useReelSoundtrack } from '@/composables/composer/useReelSoundtrack';
 import { useMetaErrors } from '@/composables/useMetaErrors';
-import { useReelSoundtrack } from '@/composables/useReelSoundtrack';
 import { instagramProfileUrl } from '@/lib/instagram';
 import { rangeFill } from '@/lib/rangeFill';
 import { ContentType } from '@/types/content-type';

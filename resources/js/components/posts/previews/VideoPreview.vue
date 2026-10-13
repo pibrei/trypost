@@ -2,7 +2,7 @@
 import { IconPlayerPlayFilled } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import { useSoundtrackVideo } from '@/composables/useReelSoundtrack';
+import { useSoundtrackVideo } from '@/composables/composer/useReelSoundtrack';
 
 const props = withDefaults(
     defineProps<{

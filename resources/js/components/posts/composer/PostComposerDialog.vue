@@ -93,6 +93,10 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import UnsavedChangesDialog from '@/components/UnsavedChangesDialog.vue';
+import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
+import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
+import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
+import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
@@ -106,10 +110,7 @@ import {
     useComposerAutosave,
 } from '@/composables/useComposerAutosave';
 import { useComposerLiveState } from '@/composables/useComposerData';
-import { useComposerTimezone } from '@/composables/useComposerTimezone';
-import { useComposerUnsavedChanges } from '@/composables/useComposerUnsavedChanges';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import { useLastUsedAccounts } from '@/composables/useLastUsedAccounts';
 import { useLinkCard } from '@/composables/useLinkCard';
 import {
     getMediaValidationWarning,
@@ -143,7 +144,6 @@ import {
     type NetworkGroup,
     type PostComposition,
 } from '@/composables/usePostComposition';
-import { useSaveAndLinkFacebook } from '@/composables/useSaveAndLinkFacebook';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';

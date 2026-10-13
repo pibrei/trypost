@@ -21,7 +21,7 @@ import PreviewVerticalCard from '@/components/posts/previews/PreviewVerticalCard
 import {
     providePreviewSoundtrack,
     soundtrackLabel,
-} from '@/composables/useReelSoundtrack';
+} from '@/composables/composer/useReelSoundtrack';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 
