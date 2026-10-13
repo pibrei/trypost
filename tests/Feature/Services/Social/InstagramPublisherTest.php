@@ -2561,9 +2561,28 @@ test('instagram publisher fails a reel with music on an account connected throug
     fakeInstagramReelFlow();
 
     expect(fn () => $this->publisher->publish($this->post))
-        ->toThrow(InstagramPublishException::class, __('posts.form.instagram.music.requires_facebook'));
+        ->toThrow(function (InstagramPublishException $exception): void {
+            expect($exception->getMessage())->toBe(__('posts.form.instagram.music.requires_facebook'))
+                ->and($exception->category)->toBe(ErrorCategory::ContentPolicy);
+        });
 
     Http::assertNothingSent();
+});
+
+test('a feed video with a leftover track on an account connected through Instagram Login publishes without music', function () {
+    $this->post->update([
+        'content_type' => ContentType::InstagramFeed,
+        'meta' => ['audio' => ['id' => 'audio-1']],
+        'media' => instagramVideo(),
+    ]);
+    fakeInstagramReelFlow();
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/ig_123456789/media')
+        && data_get($request->data(), 'media_type') === 'REELS'
+        && ! array_key_exists('audio_configuration', $request->data()));
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/ig_123456789/media_publish'));
 });
 
 test('instagram publisher attaches music to a reel of an account connected through Facebook', function (int|string $videoVolume) {

@@ -6,6 +6,7 @@ use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -69,6 +70,7 @@ test('instagram collaborators, trial reels and music are stored the same on the 
         ['audio' => ['id' => 'audio-1', 'title' => 'Song', 'artist' => 'Band', 'audio_volume' => 80, 'video_volume' => 20, 'unknown' => 'dropped']],
         ['audio' => ['id' => 'audio-1', 'title' => 'Song', 'artist' => 'Band', 'audio_volume' => 80, 'video_volume' => 20]],
     ],
+    'music without a track id on a draft' => [Platform::InstagramFacebook, ['audio' => ['title' => 'Song']], ['audio' => ['title' => 'Song']]],
 ]);
 
 test('scheduling refuses a trial reel with collaborators and music without facebook on the web, api and mcp', function (string $surface, Platform $platform, array $meta, string $field, string $message) {
@@ -99,10 +101,21 @@ test('scheduling refuses music without a track id on the web, api and mcp', func
     ]);
 
     $surface === 'mcp'
-        ? $response->assertHasErrors()
-        : $response->assertUnprocessable()->assertJsonValidationErrors('meta.audio.id');
+        ? $response->assertHasErrors([__('validation.required', ['attribute' => 'audio id'])])
+        : $response->assertUnprocessable()->assertJsonValidationErrors(['meta.audio.id' => __('validation.required', ['attribute' => 'audio id'])]);
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp']);
+
+test('publishing a stored reel with music without a track id is refused on mcp', function () {
+    $post = instagramSettingsParityReel(Platform::InstagramFacebook);
+    $post->forceFill(['meta' => ['audio' => ['title' => 'Song']]])->save();
+
+    TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__('validation.required', ['attribute' => 'audio id'])]);
+
+    expect($post->fresh()->status)->toBe(Status::Draft);
+});
 
 test('collaborators beyond three and an unknown trial strategy are refused on the web, api and mcp', function (string $surface, array $meta, string $field) {
     $post = instagramSettingsParityReel(Platform::Instagram);

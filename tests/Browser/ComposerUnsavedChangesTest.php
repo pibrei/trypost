@@ -489,6 +489,31 @@ test('after keeping an edited post on back and then leaving through an app link 
         ->assertNoJavaScriptErrors();
 });
 
+test('saving an edited post after keeping it on back leaves the list page restorable from history', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+    $listPath = unsavedChangesListPath();
+
+    $page->click('@instagram-share-to-feed');
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    $page->click('@unsaved-changes-keep');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    $page->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
+    waitForUnsavedChangesCondition($page, "location.pathname !== '{$listPath}'");
+
+    $page->back();
+    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertPathIs($listPath);
+    expect($page->script('window.history.state !== null'))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('pressing escape on an edited post asks first', function () {
     $post = seedUnsavedChangesReel();
 

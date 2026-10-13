@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -359,6 +362,12 @@ test('instagram callback moves a card connected through facebook back to instagr
         'platform_user_id' => '17841400000000001',
         'username' => 'old',
     ]);
+    $reel = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'meta' => ['audio' => ['id' => '123', 'title' => 'Song']],
+    ]);
 
     startSocialConnect($this->workspace->id, Platform::Instagram, $account->id);
 
@@ -382,5 +391,7 @@ test('instagram callback moves a card connected through facebook back to instagr
     expect($this->workspace->socialAccounts()->count())->toBe(1)
         ->and($account->fresh()->platform)->toBe(Platform::Instagram)
         ->and($account->fresh()->platform_user_id)->toBe('app-scoped-1')
-        ->and($account->fresh()->access_token)->toBe('fresh-access-token');
+        ->and($account->fresh()->access_token)->toBe('fresh-access-token')
+        ->and($reel->fresh()->platform)->toBe(Platform::Instagram)
+        ->and(data_get($reel->fresh()->meta, 'audio.id'))->toBe('123');
 });

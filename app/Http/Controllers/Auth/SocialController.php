@@ -312,7 +312,7 @@ class SocialController extends Controller
 
         $seated = $workspace->socialAccounts()
             ->whereIn('platform', $this->platform->networkPlatformValues())
-            ->get();
+            ->get(['platform', 'platform_user_id', 'meta']);
 
         return array_values(array_filter(
             $identities,

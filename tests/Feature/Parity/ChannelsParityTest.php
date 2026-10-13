@@ -290,8 +290,8 @@ test('instagram audio refuses an id that is not a number and a search that is to
     auth()->forgetGuards();
     $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio.show', [$instagram, 'not-a-number']))->assertNotFound();
     $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.instagram-audio', [$instagram, 'q' => str_repeat('a', 101)]))->assertUnprocessable()->assertJsonValidationErrors('q');
-    TryPostServer::actingAs($this->user)->tool(GetInstagramAudioTool::class, ['account_id' => $instagram->id, 'audio_id' => 'not-a-number'])->assertHasErrors();
-    TryPostServer::actingAs($this->user)->tool(SearchInstagramAudioTool::class, ['account_id' => $instagram->id, 'q' => str_repeat('a', 101)])->assertHasErrors();
+    TryPostServer::actingAs($this->user)->tool(GetInstagramAudioTool::class, ['account_id' => $instagram->id, 'audio_id' => 'not-a-number'])->assertHasErrors([__('validation.regex', ['attribute' => 'audio id'])]);
+    TryPostServer::actingAs($this->user)->tool(SearchInstagramAudioTool::class, ['account_id' => $instagram->id, 'q' => str_repeat('a', 101)])->assertHasErrors([__('validation.max.string', ['attribute' => 'q', 'max' => 100])]);
 
     Http::assertNothingSent();
 });
