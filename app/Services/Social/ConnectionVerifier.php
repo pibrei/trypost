@@ -658,14 +658,26 @@ class ConnectionVerifier
         ]);
 
         if ($response->successful()) {
-            if (filled($instagramAccountId = $response->json('user_id'))) {
-                $account->rememberInstagramAccountId((string) $instagramAccountId);
-            }
+            $this->rememberInstagramAccountId($account, $response->json('user_id'));
 
             return true;
         }
 
         throw GraphError::classifyVerifyFailure($response, 'Instagram');
+    }
+
+    /**
+     * Keeps the Instagram professional account id of an Instagram Login
+     * account (older accounts were connected before it was stored), so a
+     * reconnect through Facebook matches it without asking Instagram.
+     */
+    private function rememberInstagramAccountId(SocialAccount $account, mixed $instagramAccountId): void
+    {
+        if (blank($instagramAccountId) || data_get($account->meta, 'ig_user_id') === (string) $instagramAccountId) {
+            return;
+        }
+
+        $account->forceFill(['meta' => [...($account->meta ?? []), 'ig_user_id' => (string) $instagramAccountId]])->saveQuietly();
     }
 
     private function verifyFacebook(SocialAccount $account): bool

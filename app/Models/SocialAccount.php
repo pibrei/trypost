@@ -33,7 +33,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 #[ObservedBy([SocialAccountObserver::class, ComposerVersionObserver::class])]
@@ -42,9 +41,6 @@ class SocialAccount extends Model
 {
     /** @use HasFactory<SocialAccountFactory> */
     use HasFactory, HasUuids;
-
-    /** Whether instagramAccountId() already asked Instagram for this instance. */
-    private bool $instagramAccountIdLookedUp = false;
 
     public const int X_LONG_POST_LENGTH = 25000;
 
@@ -265,61 +261,16 @@ class SocialAccount extends Model
     /**
      * The Instagram professional account id: the platform user id when
      * connected through Facebook, `meta.ig_user_id` when connected through
-     * Instagram Login. Accounts connected before that was stored read it once
-     * from Instagram and keep it; a failed read is not retried on the same
-     * instance, so a connect offering several identities asks only once.
+     * Instagram Login (stored on connect, and filled in for older accounts by
+     * the daily connection check).
      */
     public function instagramAccountId(): ?string
     {
-        if ($this->platform === SocialPlatform::InstagramFacebook) {
-            return (string) $this->platform_user_id;
-        }
-
-        if ($this->platform !== SocialPlatform::Instagram) {
-            return null;
-        }
-
-        $stored = data_get($this->meta, 'ig_user_id');
-
-        if (filled($stored)) {
-            return (string) $stored;
-        }
-
-        if ($this->instagramAccountIdLookedUp) {
-            return null;
-        }
-
-        $this->instagramAccountIdLookedUp = true;
-
-        $fetched = rescue(fn (): mixed => Http::connectTimeout(2)
-            ->timeout(4)
-            ->get(config('trypost.platforms.instagram.graph_api').'/me', [
-                'fields' => 'user_id',
-                'access_token' => $this->access_token,
-            ])
-            ->throw()
-            ->json('user_id'), report: false);
-
-        if (blank($fetched)) {
-            return null;
-        }
-
-        $this->rememberInstagramAccountId((string) $fetched);
-
-        return (string) $fetched;
-    }
-
-    /**
-     * Keeps the Instagram professional account id of an Instagram Login
-     * account, so matching it against Facebook never has to ask Instagram.
-     */
-    public function rememberInstagramAccountId(string $instagramAccountId): void
-    {
-        if ($this->platform !== SocialPlatform::Instagram || data_get($this->meta, 'ig_user_id') === $instagramAccountId) {
-            return;
-        }
-
-        $this->forceFill(['meta' => [...($this->meta ?? []), 'ig_user_id' => $instagramAccountId]])->saveQuietly();
+        return match ($this->platform) {
+            SocialPlatform::InstagramFacebook => (string) $this->platform_user_id,
+            SocialPlatform::Instagram => transform(data_get($this->meta, 'ig_user_id'), fn (mixed $id): string => (string) $id),
+            default => null,
+        };
     }
 
     /**

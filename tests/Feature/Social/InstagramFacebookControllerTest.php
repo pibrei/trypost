@@ -833,9 +833,9 @@ test('reconnecting a standalone instagram card through facebook moves it to inst
         'platform_user_id' => 'app-scoped-1',
         'username' => 'mybiz',
         'access_token' => 'instagram-token',
-        'meta' => ['account_type' => 'BUSINESS'],
+        'meta' => ['account_type' => 'BUSINESS', 'ig_user_id' => 'ig-pro-1'],
     ]);
-    Http::fake([config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['user_id' => 'ig-pro-1'])]);
+    Http::fake();
 
     startSocialConnect($this->workspace, Platform::InstagramFacebook, $account)->offer([
         PendingConnection::identity(Platform::InstagramFacebook, 'ig-pro-1', 'My Biz', 'mybiz', null, 'profile', [
