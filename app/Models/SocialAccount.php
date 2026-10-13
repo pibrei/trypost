@@ -304,9 +304,22 @@ class SocialAccount extends Model
             return null;
         }
 
-        $this->forceFill(['meta' => [...($this->meta ?? []), 'ig_user_id' => (string) $fetched]])->saveQuietly();
+        $this->rememberInstagramAccountId((string) $fetched);
 
         return (string) $fetched;
+    }
+
+    /**
+     * Keeps the Instagram professional account id of an Instagram Login
+     * account, so matching it against Facebook never has to ask Instagram.
+     */
+    public function rememberInstagramAccountId(string $instagramAccountId): void
+    {
+        if ($this->platform !== SocialPlatform::Instagram || data_get($this->meta, 'ig_user_id') === $instagramAccountId) {
+            return;
+        }
+
+        $this->forceFill(['meta' => [...($this->meta ?? []), 'ig_user_id' => $instagramAccountId]])->saveQuietly();
     }
 
     /**

@@ -653,11 +653,15 @@ class ConnectionVerifier
         $baseUrl = $account->platform->instagramGraphBaseUrl();
 
         $response = Http::get("{$baseUrl}/me", [
-            'fields' => 'id,username',
+            'fields' => $account->platform === Platform::Instagram ? 'id,username,user_id' : 'id,username',
             'access_token' => $account->access_token,
         ]);
 
         if ($response->successful()) {
+            if (filled($instagramAccountId = $response->json('user_id'))) {
+                $account->rememberInstagramAccountId((string) $instagramAccountId);
+            }
+
             return true;
         }
 

@@ -1531,3 +1531,34 @@ test('a refresh that loses the race reuses the token the winner stored instead o
         ->and($loser->refresh_token)->toBe('winner-refresh');
     Http::assertNothingSent();
 });
+
+test('instagram login verify remembers the professional account id of an account connected before it was stored', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => 'app-scoped-1', 'username' => 'trypost', 'user_id' => '17841400000000001']),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+        'meta' => ['username' => 'trypost'],
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue()
+        ->and($account->fresh()->meta)->toEqual(['username' => 'trypost', 'ig_user_id' => '17841400000000001']);
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'fields=id%2Cusername%2Cuser_id'));
+});
+
+test('instagram via facebook verify asks for no user_id, which a page token does not have', function () {
+    Http::fake([
+        config('trypost.platforms.instagram-facebook.graph_api').'/me*' => Http::response(['id' => 'page-1', 'username' => 'trypost']),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'platform' => 'instagram-facebook',
+        'token_expires_at' => now()->addDays(30),
+        'meta' => [],
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue()
+        ->and(data_get($account->fresh()->meta, 'ig_user_id'))->toBeNull();
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'fields=id%2Cusername&'));
+});
