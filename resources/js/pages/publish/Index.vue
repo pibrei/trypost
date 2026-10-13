@@ -761,6 +761,7 @@ const submitComposition = (
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
+        replace: true,
         onSuccess: () => {
             composerOpen.value = false;
             onSaved?.();
