@@ -128,6 +128,21 @@ test('people tagged while attaching an upload or a url are stored the same throu
         ->toEqual(['api upload' => $tags, 'mcp upload' => $tags, 'api url' => $tags, 'mcp url' => $tags]);
 });
 
+test('a video cover frame set while attaching an upload is stored the same through api and mcp', function () {
+    $apiPost = mediaParityPost($this);
+    $mcpPost = mediaParityPost($this);
+
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-upload', $apiPost), ['upload_token' => mediaParityUpload($this, 'video')->upload_token, 'meta' => ['cover_offset_ms' => 1500]])
+        ->assertSuccessful();
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, ['post_id' => $mcpPost->id, 'upload_token' => mediaParityUpload($this, 'video')->upload_token, 'meta' => ['cover_offset_ms' => 1500]])
+        ->assertOk();
+
+    expect(data_get($apiPost->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500)
+        ->and(data_get($mcpPost->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500);
+});
+
 test('more than twenty people tagged while attaching are refused through api and mcp', function () {
     $tags = collect(range(1, 21))->map(fn (int $index): array => ['username' => "person{$index}", 'x' => 0.5, 'y' => 0.5])->all();
     $apiPost = mediaParityPost($this);

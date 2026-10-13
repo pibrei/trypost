@@ -114,7 +114,24 @@ test('a content type that is not text is refused with a validation error on the 
     ]);
 
     $surface === 'mcp'
-        ? $response->assertHasErrors()
+        ? $response->assertHasErrors(['content type'])
         : $response->assertUnprocessable()->assertJsonValidationErrors('content_type');
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
+test('scheduling without sending the content type checks the reel rules against the stored one on the web, api and mcp', function (string $surface) {
+    $post = instagramSettingsParityReel(Platform::Instagram);
+    $post->forceFill(['meta' => ['audio' => ['id' => 'audio-1']]])->save();
+    $payload = ['status' => Status::Scheduled->value, 'scheduled_at' => now()->addDay()->toIso8601String(), 'content' => $post->content];
+
+    $response = match ($surface) {
+        'web' => $this->actingAs($this->user)->putJson(route('app.posts.update', $post), [...$payload, 'media' => $post->media]),
+        'api' => $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.update', $post), $payload),
+        'mcp' => TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, ...$payload]),
+    };
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors([__('posts.form.instagram.music.requires_facebook')])
+        : $response->assertUnprocessable()->assertJsonValidationErrors(['meta.audio' => __('posts.form.instagram.music.requires_facebook')]);
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp']);

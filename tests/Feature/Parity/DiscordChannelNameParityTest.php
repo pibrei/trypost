@@ -111,3 +111,20 @@ test('only discord posts look up a channel name', function () {
         'meta' => ['channel_id' => '111'],
     ])->assertCreated();
 });
+
+test('duplicating a discord post keeps its channel name without asking discord', function () {
+    $this->mock(DiscordClient::class, function (MockInterface $discord): void {
+        $discord->shouldReceive('cachedChannels')->andReturnNull();
+        $discord->shouldNotReceive('channels');
+    });
+    $post = Post::factory()->forAccount($this->discord, ContentType::DiscordMessage)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Release notes',
+        'meta' => ['channel_id' => '111', 'channel_name' => 'general'],
+    ]);
+
+    $this->actingAs($this->user)->post(route('app.posts.duplicate', $post))->assertRedirect();
+
+    $copy = Post::query()->where('id', '!=', $post->id)->sole();
+    expect($copy->meta)->toMatchArray(['channel_id' => '111', 'channel_name' => 'general']);
+});
