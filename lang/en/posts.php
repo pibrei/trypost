@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'Maybe later',
                 'save_and_link' => 'Save & link',
                 'save_and_link_blocked' => 'This post can\'t be saved yet. Wait for uploads to finish and fix what\'s highlighted, then try again.',
+                'save_and_link_pending' => 'This post is waiting for approval. Approve it or move it to drafts before linking Facebook.',
             ],
             'collaborators' => [
                 'label' => 'Collaborators',

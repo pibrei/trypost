@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'Później',
                 'save_and_link' => 'Zapisz i połącz',
                 'save_and_link_blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
+                'save_and_link_pending' => 'Ten post czeka na zatwierdzenie. Zatwierdź go lub przenieś do wersji roboczych przed połączeniem Facebooka.',
             ],
             'collaborators' => [
                 'label' => 'Współtwórcy',

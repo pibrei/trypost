@@ -371,6 +371,7 @@ return [
                 'maybe_later' => '나중에',
                 'save_and_link' => '저장 후 연결',
                 'save_and_link_blocked' => '이 게시물은 아직 저장할 수 없습니다. 업로드가 끝날 때까지 기다리고 표시된 부분을 고친 뒤 다시 시도하세요.',
+                'save_and_link_pending' => '이 게시물은 승인을 기다리고 있습니다. Facebook을 연결하기 전에 승인하거나 임시 저장으로 옮기세요.',
             ],
             'collaborators' => [
                 'label' => '공동 작업자',

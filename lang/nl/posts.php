@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'Later',
                 'save_and_link' => 'Opslaan en koppelen',
                 'save_and_link_blocked' => 'Deze post kan nog niet worden opgeslagen. Wacht tot de uploads klaar zijn, los het gemarkeerde op en probeer het opnieuw.',
+                'save_and_link_pending' => 'Deze post wacht op goedkeuring. Keur hem goed of zet hem in concepten voordat je Facebook koppelt.',
             ],
             'collaborators' => [
                 'label' => 'Medewerkers',

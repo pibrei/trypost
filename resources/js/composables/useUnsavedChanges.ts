@@ -36,18 +36,29 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
     };
 
     let holdingBack = false;
+    let releasing = false;
+    let afterRelease: (() => void) | null = null;
 
     const holdBack = (): void => {
-        if (holdingBack) return;
+        if (holdingBack || releasing) return;
         holdingBack = true;
         const state = window.history.state;
         window.history.replaceState(null, '', window.location.href);
         window.history.pushState(state, '', window.location.href);
     };
 
-    const releaseBack = (): void => {
-        if (!holdingBack) return;
+    /**
+     * Drops the doubled history entry, then runs `then` once the browser is
+     * back on the page's own entry, so leaving never strands the copy.
+     */
+    const releaseBack = (then?: () => void): void => {
+        if (!holdingBack) {
+            then?.();
+            return;
+        }
         holdingBack = false;
+        releasing = true;
+        afterRelease = then ?? null;
         window.history.back();
     };
 
@@ -55,7 +66,7 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
         const action = pending;
         pending = null;
         confirming.value = false;
-        if (action) leave(action);
+        if (action) releaseBack(() => leave(action));
     };
 
     const keepEditing = (): void => {
@@ -65,6 +76,20 @@ export const useUnsavedChanges = (isDirty: () => boolean) => {
     };
 
     const onPopState = (): void => {
+        if (releasing) {
+            releasing = false;
+            const then = afterRelease;
+            afterRelease = null;
+
+            if (then) {
+                then();
+            } else if (isDirty()) {
+                holdBack();
+            }
+
+            return;
+        }
+
         if (!holdingBack || leaving) return;
         holdingBack = false;
         guard(() => window.history.back());

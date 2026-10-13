@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'Più tardi',
                 'save_and_link' => 'Salva e collega',
                 'save_and_link_blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
+                'save_and_link_pending' => 'Questo post è in attesa di approvazione. Approvalo o spostalo nelle bozze prima di collegare Facebook.',
             ],
             'collaborators' => [
                 'label' => 'Collaboratori',

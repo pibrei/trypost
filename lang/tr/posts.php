@@ -373,6 +373,7 @@ return [
                 'maybe_later' => 'Sonra',
                 'save_and_link' => 'Kaydet ve bağla',
                 'save_and_link_blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekle, işaretlenenleri düzelt ve tekrar dene.',
+                'save_and_link_pending' => 'Bu gönderi onay bekliyor. Facebook\'u bağlamadan önce onayla ya da taslaklara taşı.',
             ],
             'collaborators' => [
                 'label' => 'Ortak çalışanlar',

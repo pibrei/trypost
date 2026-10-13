@@ -101,7 +101,9 @@ const channelId = computed({
             channel_id: value || null,
             channel_name:
                 channels.value.find((channel) => channel.id === value)?.name ??
-                null,
+                (value === props.meta?.channel_id
+                    ? (props.meta?.channel_name ?? null)
+                    : null),
         }),
 });
 
@@ -111,7 +113,10 @@ const channelOptions = computed<DiscordChannel[]>(() => {
         !channels.value.some((channel) => channel.id === channelId.value)
     ) {
         return [
-            { id: channelId.value, name: channelId.value },
+            {
+                id: channelId.value,
+                name: props.meta?.channel_name ?? channelId.value,
+            },
             ...channels.value,
         ];
     }

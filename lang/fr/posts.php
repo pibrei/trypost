@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'Plus tard',
                 'save_and_link' => 'Lier',
                 'save_and_link_blocked' => 'Ce post ne peut pas encore être enregistré. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
+                'save_and_link_pending' => 'Ce post attend une approbation. Approuvez-le ou déplacez-le dans les brouillons avant de lier Facebook.',
             ],
             'collaborators' => [
                 'label' => 'Collaborateurs',

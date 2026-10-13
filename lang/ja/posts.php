@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'あとで',
                 'save_and_link' => '保存してリンク',
                 'save_and_link_blocked' => 'この投稿はまだ保存できません。アップロードの完了を待ち、強調表示された箇所を修正してから、もう一度お試しください。',
+                'save_and_link_pending' => 'この投稿は承認待ちです。Facebookを連携する前に、承認するか下書きに移動してください。',
             ],
             'collaborators' => [
                 'label' => 'コラボレーター',

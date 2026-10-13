@@ -1856,12 +1856,22 @@ const submitDraft = (): void => {
     submit(PostStatus.Draft);
 };
 
-const saveDraftAndLinkFacebook = (account: ComposerAccount): void => {
+const saveAndLinkFacebook = (account: ComposerAccount): void => {
     const linkFacebook = (): void =>
         openConnectStep('instagram-facebook', account.id);
+    const status = props.initialPost?.status;
+
+    if (status === PostStatus.PendingApproval && !requiresApproval.value) {
+        toast.error(trans('posts.form.instagram.music.save_and_link_pending'), {
+            testId: 'instagram-music-save-and-link-pending',
+        });
+
+        return;
+    }
 
     const keepsSchedule =
-        props.initialPost?.status === PostStatus.Scheduled &&
+        (status === PostStatus.Scheduled ||
+            status === PostStatus.PendingApproval) &&
         scheduleMode.value !== 'now';
 
     const submitted = submit(
@@ -2098,12 +2108,28 @@ watch(
 );
 
 /**
+ * Settings fill some values in on their own once their data loads (a renewed
+ * music cover, the TikTok creator's limits), so the opened state is taken
+ * again at the person's first interaction and nothing counts before it.
+ */
+const interacted = ref(false);
+
+const markInteracted = (): void => {
+    if (interacted.value) return;
+    interacted.value = true;
+    if (openedSnapshot.value !== null) {
+        openedSnapshot.value = editSnapshot();
+    }
+};
+
+/**
  * Only an edit of a saved post can lose work: a new post is autosaved and
  * offered back the next time the composer opens.
  */
 const hasUnsavedChanges = (): boolean =>
     editingSavedPost &&
     props.open &&
+    interacted.value &&
     !saved.value &&
     !props.submitting &&
     openedSnapshot.value !== null &&
@@ -2340,6 +2366,10 @@ const onDialogOpenChange = (value: boolean): void => {
             :aria-describedby="undefined"
             data-testid="post-composer-dialog"
             :disable-outside-pointer-events="!isGooglePickerOpen"
+            @pointerdown.capture="markInteracted"
+            @keydown.capture="markInteracted"
+            @paste.capture="markInteracted"
+            @dragenter.capture="markInteracted"
             @interact-outside="isGooglePickerOpen && $event.preventDefault()"
         >
             <input
@@ -3269,7 +3299,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             )
                                         "
                                         @link-facebook="
-                                            saveDraftAndLinkFacebook(
+                                            saveAndLinkFacebook(
                                                 group.anchor,
                                             )
                                         "

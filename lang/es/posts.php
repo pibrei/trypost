@@ -371,6 +371,7 @@ return [
                 'maybe_later' => 'Ahora no',
                 'save_and_link' => 'Guardar y vincular',
                 'save_and_link_blocked' => 'Todavía no se puede guardar este post. Espera a que terminen las subidas y corrige lo marcado, luego inténtalo de nuevo.',
+                'save_and_link_pending' => 'Este post está esperando aprobación. Apruébalo o muévelo a borradores antes de vincular Facebook.',
             ],
             'collaborators' => [
                 'label' => 'Colaboradores',

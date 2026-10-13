@@ -285,6 +285,7 @@ test('after saving an edited post the browser back button does not reopen it or 
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
+        ->assertQueryStringMissing('edit')
         ->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
 });
@@ -305,4 +306,163 @@ test('after discarding an edited post the browser back button does not reopen it
         ->assertMissing('@unsaved-changes-dialog')
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
+});
+
+test('closing an untouched tiktok post asks nothing when the creator settings turn interactions off', function (Platform $platform, ContentType $contentType, array $meta, string $settledCondition) {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/post/publish/creator_info/query/' => Http::response(['data' => [
+            'creator_nickname' => 'Tik',
+            'creator_username' => 'tiktoker',
+            'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
+            'comment_disabled' => true,
+            'duet_disabled' => true,
+            'stitch_disabled' => true,
+            'max_video_post_duration_sec' => 600,
+        ]]),
+        '*' => Http::response([], 200),
+    ]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => $platform,
+        'access_token' => 'channel-token',
+        'token_expires_at' => now()->addDays(20),
+    ]);
+    $post = Post::factory()->forAccount($account, $contentType)->create([
+        'user_id' => $user->id,
+        'content' => 'Untouched post',
+        'meta' => $meta,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'channel-settings-rows');
+    waitForUnsavedChangesCondition($page, $settledCondition);
+    $page->click('@composer-close');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'tiktok creator turns interactions off' => [Platform::TikTok, ContentType::TikTokVideo, ['allow_comments' => true, 'allow_duet' => true, 'allow_stitch' => true], "document.querySelector('[data-testid=\"tiktok-allow-comments\"]')?.disabled === true"],
+]);
+
+test('a music cover renewed after the post opened does not count as an unsaved change', function () {
+    $pixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    Http::fake([
+        config('trypost.platforms.instagram-facebook.graph_api').'/846373660299207*' => Http::response([
+            'audio_id' => '846373660299207', 'title' => 'Summer Song', 'cover_artwork_thumbnail_uri' => "{$pixel}#fresh",
+        ]),
+        '*' => Http::response([], 200),
+    ]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::InstagramFacebook]);
+    $post = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
+        'user_id' => $user->id,
+        'content' => 'Reel with music',
+        'meta' => ['audio' => ['id' => '846373660299207', 'title' => 'Summer Song', 'cover_url' => $pixel]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'instagram-music-selected-cover');
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+    $page->script("document.querySelector('[data-testid=\"instagram-music-selected-cover\"]').dispatchEvent(new Event('error'))");
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.endsWith('#fresh')");
+    $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
+        ->click('@composer-close');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('after leaving an edited post through an app link the browser back button returns to the post once', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post);
+
+    $page->click('@instagram-share-to-feed')
+        ->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->back();
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'true');
+
+    $page->back();
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog')
+        ->assertQueryStringMissing('edit')
+        ->assertNoJavaScriptErrors();
+});
+
+test('pressing escape on an edited post asks first', function () {
+    $post = seedUnsavedChangesReel();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->click('@instagram-share-to-feed')
+        ->keys('@instagram-share-to-feed', 'Escape');
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+
+    $page->assertVisible('@unsaved-changes-dialog')
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('closing a new post with text never asks, since it is kept as an autosaved draft', function () {
+    $post = seedUnsavedChangesReel();
+    $account = $post->socialAccount;
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'posts-new-post');
+    $page->click('@posts-new-post');
+    waitForUnsavedChangesTestId($page, 'composer-add-account');
+    $page->click('@composer-add-account')
+        ->click("@composer-account-option-{$account->id}")
+        ->fill("@composer-caption-{$account->id}", 'A new idea')
+        ->click('@composer-close');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a discord channel missing from the list keeps its stored name', function () {
+    Http::fake(['*' => Http::response([], 200)]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Discord]);
+    $post = Post::factory()->forAccount($account, ContentType::DiscordMessage)->create([
+        'user_id' => $user->id,
+        'content' => 'Release notes',
+        'meta' => ['channel_id' => '999', 'channel_name' => 'announcements'],
+    ]);
+    $this->mock(DiscordClient::class)->shouldReceive('channels')->andReturn([['id' => '111', 'name' => 'general', 'type' => 0]]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]:not([disabled])')?.textContent.includes('announcements')");
+
+    expect($page->script("document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]').textContent.trim()"))->toBe('#announcements');
+    $page->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertNoJavaScriptErrors();
+    expect($post->fresh()->meta)->toMatchArray(['channel_id' => '999', 'channel_name' => 'announcements']);
 });

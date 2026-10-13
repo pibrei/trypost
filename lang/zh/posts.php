@@ -371,6 +371,7 @@ return [
                 'maybe_later' => '以后再说',
                 'save_and_link' => '保存并关联',
                 'save_and_link_blocked' => '此帖子暂时无法保存。请等待上传完成并修正标出的问题，然后重试。',
+                'save_and_link_pending' => '此帖子正在等待审批。关联 Facebook 前，请先批准或将其移到草稿。',
             ],
             'collaborators' => [
                 'label' => '协作者',

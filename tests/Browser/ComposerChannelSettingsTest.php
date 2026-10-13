@@ -650,6 +650,43 @@ test('save and link explains why a scheduled reel that cannot be saved stays ope
     expect($post->fresh()->status)->toBe(Status::Scheduled);
 });
 
+test('save and link keeps a pending reel pending for a member who needs approval', function () {
+    fakeChannelSettingsApis();
+    $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel, $video);
+    $post->workspace->members()->updateExistingPivot($post->user_id, membershipPivot('approval'));
+    $post->update(['status' => Status::PendingApproval, 'scheduled_at' => now()->addDay()]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    $page->click('@instagram-music-add');
+    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    $page->click('@instagram-music-save-and-link');
+    waitForChannelSettingsTestId($page, 'instagram-facebook-requirements');
+
+    $page->assertNoJavaScriptErrors();
+    expect($post->fresh()->status)->toBe(Status::PendingApproval);
+});
+
+test('save and link asks an approver to decide on a pending reel first', function () {
+    fakeChannelSettingsApis();
+    $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel, $video);
+    $post->update(['status' => Status::PendingApproval, 'scheduled_at' => now()->addDay()]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    $page->click('@instagram-music-add');
+    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    $page->click('@instagram-music-save-and-link');
+    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link-pending');
+
+    $page->assertSee(__('posts.form.instagram.music.save_and_link_pending'))
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->status)->toBe(Status::PendingApproval);
+});
+
 test('save and link saves a draft reel as a draft before linking Facebook', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);

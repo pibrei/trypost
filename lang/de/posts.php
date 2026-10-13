@@ -373,6 +373,7 @@ return [
                 'maybe_later' => 'Später',
                 'save_and_link' => 'Verknüpfen',
                 'save_and_link_blocked' => 'Dieser Post kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, behebe das Markierte und versuche es erneut.',
+                'save_and_link_pending' => 'Dieser Post wartet auf Freigabe. Gib ihn frei oder verschiebe ihn in die Entwürfe, bevor du Facebook verknüpfst.',
             ],
             'collaborators' => [
                 'label' => 'Mitwirkende',
