@@ -37,18 +37,8 @@ import { useReelSoundtrack } from '@/composables/useReelSoundtrack';
 import { instagramProfileUrl } from '@/lib/instagram';
 import { rangeFill } from '@/lib/rangeFill';
 import { ContentType } from '@/types/content-type';
+import type { InstagramAudio } from '@/types/instagram';
 import { Platform } from '@/types/platform';
-
-interface InstagramAudio {
-    id: string;
-    title: string;
-    artist: string | null;
-    cover_url: string | null;
-    duration_ms?: number | null;
-    preview_url: string | null;
-    audio_volume?: number | null;
-    video_volume?: number | null;
-}
 
 type VolumeKey = 'video_volume' | 'audio_volume';
 

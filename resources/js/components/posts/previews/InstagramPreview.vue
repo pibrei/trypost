@@ -23,6 +23,7 @@ import {
     useReelSoundtrack,
 } from '@/composables/useReelSoundtrack';
 import { ContentType } from '@/types/content-type';
+import type { InstagramAudio } from '@/types/instagram';
 
 import type { PreviewProps } from './types';
 
@@ -34,8 +35,12 @@ const feedAspectPadding = computed((): number => {
     return width > 0 && height > 0 ? (height / width) * 100 : 100;
 });
 
+const selectedAudio = computed(
+    () => (props.meta?.audio as InstagramAudio | null | undefined) ?? null,
+);
+
 const audioLabel = computed((): string | null => {
-    const audio = props.meta?.audio;
+    const audio = selectedAudio.value;
 
     if (!audio?.id) {
         return null;
@@ -51,10 +56,12 @@ const soundtrack = useReelSoundtrack();
 provide(PREVIEW_SOUNDTRACK, {
     playing: computed(
         () =>
-            Boolean(props.meta?.audio?.id) &&
-            soundtrack.playingAudioId.value === props.meta?.audio?.id,
+            Boolean(selectedAudio.value?.id) &&
+            soundtrack.playingAudioId.value === selectedAudio.value?.id,
     ),
-    videoVolume: computed(() => (props.meta?.audio?.video_volume ?? 100) / 100),
+    videoVolume: computed(
+        () => (selectedAudio.value?.video_volume ?? 100) / 100,
+    ),
     stop: soundtrack.stop,
 });
 
