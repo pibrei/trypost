@@ -779,3 +779,72 @@ test('saving an edited post that was published meanwhile closes it and back does
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
 });
+
+test('a tiktok post clicked before its creator settings load asks nothing on close', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/post/publish/creator_info/query/' => Http::response(['data' => [
+            'creator_nickname' => 'Tik',
+            'creator_username' => 'tiktoker',
+            'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
+            'comment_disabled' => true,
+            'duet_disabled' => true,
+            'stitch_disabled' => true,
+            'max_video_post_duration_sec' => 600,
+        ]]),
+        '*' => Http::response([], 200),
+    ]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::TikTok,
+        'access_token' => 'channel-token',
+        'token_expires_at' => now()->addDays(20),
+    ]);
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->create([
+        'user_id' => $user->id,
+        'content' => 'Untouched post',
+        'meta' => ['allow_comments' => true, 'allow_duet' => true, 'allow_stitch' => true],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__url = String(url);
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (this.__url.includes('/posts/composer/accounts/')) {
+                    setTimeout(() => send.call(this, body), 1500);
+                    return;
+                }
+                return send.call(this, body);
+            };
+        })()
+    JS);
+    $page->click("@post-edit-{$post->id}");
+    waitForUnsavedChangesTestId($page, 'composer-editor-column');
+    $page->script(<<<'JS'
+        (() => {
+            const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
+            const options = { bubbles: true, cancelable: true, pointerType: 'mouse', button: 0 };
+            target.dispatchEvent(new PointerEvent('pointerdown', options));
+            target.dispatchEvent(new PointerEvent('pointerup', options));
+        })()
+    JS);
+    expect($page->script("document.querySelector('[data-testid=\"tiktok-allow-comments\"]')?.disabled === true"))->toBeFalse();
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"tiktok-allow-comments\"]')?.disabled === true");
+    $page->click('@composer-close');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
