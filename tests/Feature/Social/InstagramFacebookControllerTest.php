@@ -54,6 +54,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -125,6 +126,7 @@ test('instagram-facebook callback connects page when first accounts response is 
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -180,12 +182,16 @@ test('instagram-facebook callback connects page when first accounts response is 
         'platform_user_id' => 'ig_desired',
         'username' => 'desired_ig',
     ]);
+
+    expect($this->workspace->socialAccounts()->sole()->meta)
+        ->toMatchArray(['page_id' => 'page_desired', 'user_id' => 'fb_user']);
 });
 
 test('instagram-facebook callback still connects when the instagram profile lookup times out', function () {
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -236,6 +242,7 @@ test('instagram-facebook callback skips pages without instagram across paginated
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -304,6 +311,7 @@ test('instagram-facebook callback fails without connecting when accounts paginat
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -421,6 +429,7 @@ test('instagram-facebook callback hides an instagram already connected standalon
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -603,6 +612,7 @@ test('instagram via facebook does not describe a page it is about to discard', f
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -650,6 +660,7 @@ test('instagram via facebook falls back to the username when meta returns a null
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -687,6 +698,7 @@ test('instagram via facebook falls back to the page name when the lookups run ou
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')
@@ -736,6 +748,7 @@ test('a reconnect keeps the handle it had when the lookup never ran', function (
     startSocialConnect($this->workspace->id, Platform::InstagramFacebook, $account->id);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb_user');
     $socialiteUser->token = 'test-user-token';
 
     Socialite::shouldReceive('driver')

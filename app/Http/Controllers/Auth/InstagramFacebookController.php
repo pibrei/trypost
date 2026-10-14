@@ -109,7 +109,7 @@ class InstagramFacebookController extends MetaController
                 ->all();
 
             $identities = array_map(
-                fn (array $page): array => $this->toIdentity($page, $granted),
+                fn (array $page): array => $this->toIdentity($page, $granted, (string) $socialUser->getId()),
                 $this->describeInstagramAccounts($connectable),
             );
 
@@ -132,7 +132,7 @@ class InstagramFacebookController extends MetaController
      * @param  array<int, string>  $scopes
      * @return array<string, mixed>
      */
-    private function toIdentity(array $page, array $scopes): array
+    private function toIdentity(array $page, array $scopes, string $facebookUserId): array
     {
         $described = (bool) data_get($page, 'ig_described');
         $name = data_get($page, 'ig_name') ?? data_get($page, 'ig_username') ?? data_get($page, 'page_name');
@@ -154,6 +154,7 @@ class InstagramFacebookController extends MetaController
                 'meta' => [
                     'page_id' => data_get($page, 'page_id'),
                     'page_name' => data_get($page, 'page_name'),
+                    'user_id' => $facebookUserId,
                 ],
             ], $described ? [] : ['username' => true]),
             keepsAvatar: ! $described,

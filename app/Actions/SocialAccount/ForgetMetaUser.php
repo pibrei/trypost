@@ -22,11 +22,10 @@ use Illuminate\Support\Facades\Log;
  * Acts on Meta's deauthorize and data deletion callbacks for one Meta user,
  * across every workspace.
  *
- * Facebook Pages keep the Facebook user in `meta.user_id`. Instagram via
- * Facebook does not record it, so it is found through a Facebook Page of that
- * user connected in the same workspace (`meta.page_id`), or by `meta.user_id`
- * should a connection ever carry it. Instagram (direct login) and Threads are found by their own
- * user id, `platform_user_id`.
+ * Facebook Pages and Instagram via Facebook keep the authorizing Facebook
+ * user in `meta.user_id`. Legacy Instagram connections without that id are
+ * found through a Facebook Page of that user in the same workspace.
+ * Instagram (direct login) and Threads use their own `platform_user_id`.
  */
 class ForgetMetaUser
 {
@@ -132,6 +131,7 @@ class ForgetMetaUser
 
                         if (filled($pageId)) {
                             $query->orWhere(fn (Builder $samePage) => $samePage
+                                ->whereNull('meta->user_id')
                                 ->where('workspace_id', $page->workspace_id)
                                 ->where('meta->page_id', (string) $pageId));
                         }

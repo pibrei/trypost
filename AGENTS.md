@@ -102,6 +102,9 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 # Deployment
 
+- Check deployment progress using status only. Never fetch deployment logs unless the deployment has failed.
+- On failure, inspect only a short tail of the deployment logs (the last 50 lines by default). Do not read full logs or repeatedly poll them.
+
 - Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
 
 === herd rules ===

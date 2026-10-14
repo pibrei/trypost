@@ -123,6 +123,56 @@ test('a repeated data deletion request for the same user reuses its confirmation
     $this->get($second->json('url'))->assertOk()->assertSee('Concluída');
 });
 
+test('a data deletion request removes instagram connected without a facebook channel', function () {
+    $instagram = SocialAccount::factory()->create([
+        'platform' => Platform::InstagramFacebook,
+        'meta' => ['page_id' => 'page-1', 'user_id' => 'fb-user-1'],
+    ]);
+
+    $this->post(route('meta.data-deletion'), [
+        'signed_request' => metaCallbackSignedRequest(['user_id' => 'fb-user-1']),
+    ])->assertOk();
+
+    $this->assertModelMissing($instagram);
+    expect(MetaDataDeletionRequest::query()->sole()->affected_accounts)->toHaveCount(1);
+});
+
+test('a meta callback does not infer another users instagram connection from a shared page', function () {
+    $workspace = Workspace::factory()->create();
+    $page = metaCallbackFacebookPage($workspace, 'fb-user-1', 'page-1');
+    $instagram = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'meta' => ['page_id' => 'page-1', 'user_id' => 'fb-user-2'],
+    ]);
+
+    $this->post(route('meta.data-deletion'), [
+        'signed_request' => metaCallbackSignedRequest(['user_id' => 'fb-user-1']),
+    ])->assertOk();
+
+    $this->assertModelMissing($page);
+    $this->assertModelExists($instagram);
+});
+
+test('deauthorize wipes an instagram only connection and preserves another meta user', function () {
+    $instagram = SocialAccount::factory()->create([
+        'platform' => Platform::InstagramFacebook,
+        'meta' => ['page_id' => 'page-1', 'user_id' => 'fb-user-1'],
+    ]);
+    $someoneElse = SocialAccount::factory()->create([
+        'platform' => Platform::InstagramFacebook,
+        'meta' => ['page_id' => 'page-2', 'user_id' => 'fb-user-2'],
+    ]);
+
+    $this->post(route('meta.deauthorize'), [
+        'signed_request' => metaCallbackSignedRequest(['user_id' => 'fb-user-1']),
+    ])->assertOk();
+
+    expect($instagram->fresh()->status)->toBe(Status::Disconnected)
+        ->and($instagram->fresh()->access_token)->toBe('')
+        ->and($someoneElse->fresh()->status)->toBe(Status::Connected);
+});
+
 test('a data deletion request for a user without channels still answers with a code', function () {
     $this->post(route('meta.data-deletion'), [
         'signed_request' => metaCallbackSignedRequest(['user_id' => 'nobody']),
