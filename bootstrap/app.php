@@ -42,6 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestForgery(except: [
             'stripe/*',
             'telegram/webhook',
+            'meta/data-deletion',
+            'meta/deauthorize',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

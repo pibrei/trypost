@@ -30,6 +30,13 @@ return [
     'legal' => [
         'terms_url' => env('LEGAL_TERMS_URL', 'https://trypost.it/terms'),
         'privacy_url' => env('LEGAL_PRIVACY_URL', 'https://trypost.it/privacy'),
+
+        // Operator shown on the self-served /privacy, /terms and /data-deletion pages.
+        'product_name' => env('LEGAL_PRODUCT_NAME') ?: 'Sify Social',
+        'company_name' => env('LEGAL_COMPANY_NAME') ?: 'Sify Tecnologia LTDA',
+        'contact_email' => env('LEGAL_CONTACT_EMAIL') ?: 'thepibrei@gmail.com',
+        'cnpj' => env('LEGAL_CNPJ', ''),
+        'updated_at' => env('LEGAL_UPDATED_AT') ?: '2026-10-13',
     ],
 
     /*

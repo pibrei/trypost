@@ -16,6 +16,7 @@ use App\Models\IdeaStage;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\MediaSourceConnection;
+use App\Models\MetaDataDeletionRequest;
 use App\Models\NotificationPreference;
 use App\Models\Plan;
 use App\Models\Post;
@@ -113,6 +114,7 @@ class AppServiceProvider extends ServiceProvider
             'invite' => Invite::class,
             'media' => Media::class,
             'mediaSourceConnection' => MediaSourceConnection::class,
+            'metaDataDeletionRequest' => MetaDataDeletionRequest::class,
             'notificationPreference' => NotificationPreference::class,
             'plan' => Plan::class,
             'post' => Post::class,
