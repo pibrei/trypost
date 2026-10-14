@@ -208,6 +208,10 @@ Vue components must have a single root element.
 
 - Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
 - Template event handlers call a named function (`@click="openCreateDialog"`), never an inline statement that mutates state (`@click="isCreateDialogOpen = true"`). Opening something usually grows a second step later (reset a form, focus, track an event), and a named function is where that goes. Passing an argument through is fine: `@click="openEditDialog(label)"`.
+- **Unsaved changes in the composer** go through `composables/composer/useUnsavedChanges.ts` (the history guard) and `useComposerUnsavedChanges.ts` (what counts as a change). The owner treats this guard as critical. How the guard works is written in the composable's docblock; three rules hold around it:
+    - The composer's save visits (`router.put` / `router.post` in `pages/publish/Index.vue`) send `replace: true`, so the saved page takes the place of the edit's history entry instead of stacking on it.
+    - "Is there unsaved work" is decided by the snapshot comparison alone, never by `isSubmitting` or another request flag.
+    - Every change to the guard ships with a browser test in `tests/Browser/ComposerUnsavedChangesTest.php` that fails without it, checked by removing the change and running the test. History bugs here showed up only in a real browser (Inertia's own popstate handler is part of every flow).
 - **Composables are scoped by area.** A composable used by one area only lives in that area's folder, `resources/js/composables/<area>/` (e.g. `composables/composer/useComposerUnsavedChanges.ts`, `composables/echo/usePostEcho.ts`). Only composables shared across areas stay at the root of `resources/js/composables/`. When a scoped composable gains a consumer in another area, move it to the root in the same change.
 - Searching a list in the UI goes through `matchesSearch` / `filterBySearch` (`resources/js/lib/search.ts`): word by word, ignoring case and accents. Never hand-roll `.toLowerCase().includes(...)` for a search box.
 
@@ -815,6 +819,9 @@ an `enabled` flag or posts with several channels. Posts created together share
 - Required-on-publish (meta a platform needs to publish, e.g. Discord `channel_id`) also lives there: `addRequiredOnPublishErrors()` for request-driven flows (web/API update `withValidator`), `assertStoredPostPublishable()` for flows that publish stored state without resubmitting platforms (MCP `PublishPostTool`). Add new required-meta rules to `requiredMetaViolation()`, not inline.
 - When adding a new platform's meta field, add it (and any publish requirement) to `PostPlatformMetaRules` ONLY, and cover it in `tests/Feature/Api/PostApiPlatformMetaTest.php` + `tests/Feature/Mcp/PostPlatformMetaToolTest.php`.
 - `PostPlatformMetaRules::formatViolation()` holds meta no post may store, even as a draft (a YouTube title with `<` or `>`). Every create and update path (web, API, MCP, repurpose) goes through `App\Support\PostCompositionValidator`, which runs it and, once the post is scheduled or published, the content limits below.
+- **What a post stores in `meta` goes through `App\Support\PostMeta::forChannel($account, $meta, $stored)`, on create (`CreateChannelPost`) and on update (`UpdatePost`, passing the post's current meta as `$stored`).** It normalizes the meta, keeps the system keys the post already had (`PostPlatformMetaRules::SYSTEM_KEYS`, today Telegram `reactions`) and has one `match` arm per network that derives something. Never write `posts.meta` from a request without it, and never add a second helper next to it.
+- **A derived value is never taken from the request.** Only the id comes in; the server resolves what it names. The Discord `channel_name` has no validation rule: `PostMeta` drops any sent value and reads the name of `channel_id` from the guild's channel list in the cache (`DiscordClient::cachedChannels()`, warmed by the composer, the API, MCP and publishing). Without a cached list the post stores no name; that is accepted (owner decision October 2026). The composer may keep the name in its local meta for the live preview; the server ignores it.
+- **Saving never calls a network.** `PostMeta` runs inside the post's transaction and the channel queue lock, so a lookup there reads a cache only, never HTTP. A save never fails over a display name.
 
 ## Content limits
 
@@ -852,6 +859,17 @@ an `enabled` flag or posts with several channels. Posts created together share
 - YouTube rejects an upload without a title (`invalidTitle`). A post with neither `meta.title` nor any text cannot be scheduled or published there: `PostPlatformMetaRules::contentMetaViolation()` (through `YouTubeMetadata::missingTitleViolation()`) reports it on `meta.title` in `PostCompositionValidator` (web, API, MCP, repurpose) and `assertStoredPostPublishable()`, and the publisher checks it again. Drafts may lack both.
 - Categories are a fixed list, `App\Enums\YouTube\Category`; the composer reads it from `Platform::publishConfig()` (`categoryOptions`, `defaultCategoryId`). Do not copy it into TypeScript.
 
+## Instagram reels, music, collaborators and tags
+
+What a post can carry on Instagram depends on how the account is connected: through Instagram Login (`Platform::Instagram`) or through a Facebook Page (`Platform::InstagramFacebook`). The rules live in `PostPlatformMetaRules::instagramReelViolation()` (save, schedule and publish) and `InstagramPublisher` (publish); keep the two in step.
+
+- **Music (`meta.audio`)** is for reels on an account connected through Facebook only: Instagram's audio search and `audio_configuration` exist only on that API. The track id is numeric everywhere: the audio routes (`whereNumber('audioId')`), the MCP tools and the `meta.audio.id` rule. A draft may keep music without an id; scheduling or publishing it is refused.
+- **Reel-only options** (`trial_graduation`, `audio`, `share_to_feed`) apply to `ContentType::InstagramReel` only. A feed post with a single video still publishes as `REELS`, but without them (`InstagramPublisher::reelOptions()`). A trial reel cannot have collaborators.
+- **Music on an account that is not connected through Facebook fails the publish visibly** (`ContentPolicy`, `posts.form.instagram.music.requires_facebook`) instead of being dropped. This happens when a card connected through Facebook is reconnected through Instagram Login: its pending posts move to the new platform with their meta untouched. The user removes the music or reconnects through Facebook, then retries. Never strip the music silently, at reconnect or at publish.
+- **Collaborators are not people tags.** Collaborators (`meta.collaborators`, up to 3 usernames, stored without `@` and deduplicated) are co-authors invited on a feed post, carousel or reel, never a story. People tags belong to a media item (`media.*.meta.user_tags`), next to a video's cover frame (`meta.cover_offset_ms`). Both work the same on the web, the API and MCP.
+- **One Instagram identity, two ways to connect it.** An account connected through Instagram Login stores its Instagram account id in `social_accounts.meta.ig_user_id` (asked from `/me` on connect, filled for older accounts by the daily connection check). Comparing identities across the two platforms goes through `SocialAccount::isIdentity()` (and `SocialController::isIdentityOf()`), never a raw `platform_user_id` comparison, so one Instagram account is never seated twice and a card can move between the two connection methods.
+- **The system adds a key to an account's meta without losing what a reconnect saved meanwhile.** `ConnectionVerifier` reads the account again under a row lock, adds `ig_user_id` to that fresh meta and saves it quietly without timestamps, so `updated_at` does not move. Never write the in-memory meta of a model loaded earlier back over the column.
+
 ## Media Types (image / video / document)
 
 - A media item is one of exactly three types: **image**, **video**, **document** (PDF). There is no standalone "audio" media type (audio exists only as a video voiceover input).
@@ -881,6 +899,10 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
+- Each `visit()` opens a new browser context: `localStorage`, cookies and history are not shared with the previous visit.
+- The page starts on `about:blank`, so a `back()` with nothing behind it can land there and a test can pass for the wrong reason. A history test starts from an app page (`visit(...)->navigate(...)`) and asserts where it ended with `assertPathIs()`.
+- `assertQueryStringMissing()` checks only the query string: on a route whose id is in the path (`app.posts.edit`) it passes whatever happens. Assert the path instead.
+- A new test for a fix must fail without the fix. Check it by removing the change, running the test, and restoring it.
 - CI runs them in three shards, each in parallel with three processes (`./vendor/bin/pest tests/Browser --compact --parallel --processes=3 --shard=N/3`), leaving a CPU of the 4-vCPU runner to the database and the app server, against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
 
 ## Array Data Access
@@ -894,6 +916,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - EVERY Eloquent model in `app/Models` MUST be registered in `Relation::enforceMorphMap([...])` inside `AppServiceProvider::configureMorphMap()`, keyed by a camelCase alias (e.g. `'postTemplate' => PostTemplate::class`).
 - When you add a new model, add it to the morph map in the same change. `tests/Unit/MorphMapTest.php` fails if any model is missing.
 - The alias is persisted in polymorphic columns, so never rename or remove an existing alias for a model that has stored rows.
+- **Models never make HTTP calls** (owner decision October 2026). A model holds pure rules over its own data (`SocialAccount::isIdentity()`); anything that asks a network lives in a service or an action (`ConnectionVerifier`, `DiscordClient`, the publishers) and writes the result back.
 
 ## Imports
 

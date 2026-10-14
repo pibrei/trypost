@@ -27,6 +27,7 @@ use App\Support\GoogleBusinessResourceName;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class ConnectionVerifier
@@ -688,28 +689,25 @@ class ConnectionVerifier
     /**
      * Keeps the Instagram professional account id of an Instagram Login
      * account (older accounts were connected before it was stored), so a
-     * reconnect through Facebook matches it without asking Instagram. Only
-     * that key is written, without touching `updated_at`, so meta saved
-     * meanwhile (a reconnect) is kept; an
-     * empty meta, which a JSON path cannot be set on, is written whole.
+     * reconnect through Facebook matches it without asking Instagram. The key
+     * is added to the meta read again under a row lock, so meta saved
+     * meanwhile (a reconnect) is kept, and `updated_at` does not move.
      */
     private function rememberInstagramAccountId(SocialAccount $account, mixed $instagramAccountId): void
     {
-        if (blank($instagramAccountId) || data_get($account->meta, 'ig_user_id') === (string) $instagramAccountId) {
+        $id = (string) $instagramAccountId;
+
+        if (blank($id) || data_get($account->meta, 'ig_user_id') === $id) {
             return;
         }
 
-        $value = (string) $instagramAccountId;
-        $meta = $account->meta;
-        $query = SocialAccount::query()->whereKey($account->getKey())->toBase();
+        $account->meta = DB::transaction(function () use ($account, $id): array {
+            $stored = SocialAccount::query()->lockForUpdate()->findOrFail($account->getKey());
+            $stored->meta = [...$stored->meta ?? [], 'ig_user_id' => $id];
+            SocialAccount::withoutTimestamps(fn () => $stored->saveQuietly());
 
-        if (is_array($meta) && $meta !== [] && ! array_is_list($meta)) {
-            $query->update(['meta->ig_user_id' => $value]);
-        } else {
-            $query->update(['meta' => json_encode(['ig_user_id' => $value])]);
-        }
-
-        $account->meta = [...(array) $meta, 'ig_user_id' => $value];
+            return $stored->meta;
+        });
         $account->syncOriginalAttribute('meta');
     }
 

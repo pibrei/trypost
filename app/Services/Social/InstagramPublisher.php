@@ -117,7 +117,7 @@ class InstagramPublisher
             $params['alt_text'] = $alt;
         }
 
-        $params = [...$params, ...$this->userTagsParam($media->userTags()), ...$this->sharedOptions(), ...$this->collaboratorsParam()];
+        $params = [...$params, ...$this->jsonListParam('user_tags', $media->userTags()), ...$this->sharedOptions(), ...$this->collaboratorsParam()];
 
         $containerId = $this->createContainer($instagramId, $params, 'container');
 
@@ -155,7 +155,7 @@ class InstagramPublisher
         } else {
             $dimensions = ContentType::InstagramStory->preferredImageDimensions();
             $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
-            $params = [...$params, ...$this->userTagsParam(array_map(
+            $params = [...$params, ...$this->jsonListParam('user_tags', array_map(
                 fn (array $tag): array => ['username' => $tag['username']],
                 $media->userTags(),
             ))];
@@ -193,7 +193,7 @@ class InstagramPublisher
                     $params['alt_text'] = $alt;
                 }
 
-                $params = [...$params, ...$this->userTagsParam($media->userTags())];
+                $params = [...$params, ...$this->jsonListParam('user_tags', $media->userTags())];
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
@@ -232,15 +232,15 @@ class InstagramPublisher
     }
 
     /**
-     * Instagram reads `user_tags` as a JSON array. Stories place the mention
-     * without a sticker, so their entries carry only the username.
+     * Instagram reads list parameters (`user_tags`, `collaborators`) as JSON
+     * arrays, and an empty one is left out.
      *
-     * @param  list<array<string, string|float>>  $tags
+     * @param  list<mixed>  $values
      * @return array<string, string>
      */
-    private function userTagsParam(array $tags): array
+    private function jsonListParam(string $name, array $values): array
     {
-        return $tags === [] ? [] : ['user_tags' => (string) json_encode($tags)];
+        return $values === [] ? [] : [$name => (string) json_encode($values)];
     }
 
     /**
@@ -323,9 +323,9 @@ class InstagramPublisher
      */
     private function collaboratorsParam(): array
     {
-        $collaborators = PostPlatformMetaRules::instagramCollaborators((array) data_get($this->post->meta, 'collaborators', []));
-
-        return $collaborators === [] ? [] : ['collaborators' => (string) json_encode($collaborators)];
+        return $this->jsonListParam('collaborators', PostPlatformMetaRules::instagramCollaborators(
+            (array) data_get($this->post->meta, 'collaborators', []),
+        ));
     }
 
     /**
