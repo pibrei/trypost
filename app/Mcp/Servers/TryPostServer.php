@@ -39,6 +39,7 @@ use App\Mcp\Tools\Post\DeletePostNoteTool;
 use App\Mcp\Tools\Post\DeletePostTool;
 use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
+use App\Mcp\Tools\Post\ImportChatMediaTool;
 use App\Mcp\Tools\Post\ListPostNotesTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
@@ -112,6 +113,7 @@ class TryPostServer extends Server
         DeletePostTool::class,
         AttachMediaFromUrlTool::class,
         RequestMediaUploadTool::class,
+        ImportChatMediaTool::class,
         AttachMediaFromUploadTool::class,
         GetPostMetricsTool::class,
         ListPostNotesTool::class,
