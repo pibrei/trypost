@@ -1959,6 +1959,7 @@ const unsavedChanges = useComposerUnsavedChanges({
     close: closeComposer,
     composition,
     scheduleMode: () => scheduleMode.value,
+    uploading: () => mediaUploading.value,
 });
 
 const close = (): void => unsavedChanges.guard(closeComposer);

@@ -274,7 +274,7 @@ function unsavedChangesListPath(): string
     return (string) parse_url(route('app.posts.index'), PHP_URL_PATH);
 }
 
-function openUnsavedChangesFromList(Post $post, ?string $from = null): mixed
+function openUnsavedChangesFromList(Post $post, ?string $from = null, string $readyTestId = 'instagram-share-to-feed'): mixed
 {
     $list = route('app.posts.index', ['tab' => 'drafts']);
     $page = $from === null
@@ -282,7 +282,7 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null): mixed
         : visit($from)->resize(1280, 900)->navigate($list);
     waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
     $page->click("@post-edit-{$post->id}");
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForUnsavedChangesTestId($page, $readyTestId);
 
     return $page;
 }
@@ -846,5 +846,58 @@ test('a tiktok post clicked before its creator settings load asks nothing on clo
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('closing an edited post while a file is still uploading asks first', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn]);
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->create([
+        'user_id' => $user->id,
+        'content' => 'Uploading',
+        'meta' => [],
+    ]);
+    $this->actingAs($user);
+
+    $page = openUnsavedChangesFromList($post, null, "composer-{$account->id}-dropzone");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__url = String(url);
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (this.__url.includes('/media/chunked')) {
+                    return;
+                }
+                return send.call(this, body);
+            };
+        })()
+    JS);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $page->script(<<<JS
+        (() => {
+            const bytes = Uint8Array.from(atob('{$png}'), (character) => character.charCodeAt(0));
+            const input = document.querySelector('[data-testid="composer-{$account->id}-file-input"]');
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([bytes], 'uploading.png', { type: 'image/png' }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        })()
+    JS);
+    waitForUnsavedChangesTestId($page, "composer-{$account->id}-upload-item");
+    $page->click('@composer-close');
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+
+    $page->assertVisible('@unsaved-changes-dialog')
+        ->click('@unsaved-changes-discard');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
 });

@@ -10,7 +10,7 @@ import {
     InputGroup,
     InputGroupAddon,
     InputGroupButton,
-    InputGroupInput,
+    InputGroupTextarea,
 } from '@/components/ui/input-group';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import {
@@ -58,7 +58,7 @@ const newBody = ref('');
 const highlightedId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
-const composerInput = ref<{ $el: HTMLInputElement } | null>(null);
+const composerInput = ref<{ $el: HTMLTextAreaElement } | null>(null);
 
 watch(total, (count) => emit('count', count));
 
@@ -189,7 +189,7 @@ const deleteNote = async (note: PostNote) => {
 };
 
 const handleComposerKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.isComposing) {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         void sendNote();
     }
@@ -310,30 +310,29 @@ watch(
             </ol>
         </div>
 
-        <div class="flex shrink-0 items-center gap-3">
+        <div class="flex shrink-0 items-end gap-3">
             <Avatar
                 v-if="currentUser"
                 :src="currentUser.photo_url"
                 :name="currentUser.name"
-                class="size-7 shrink-0 text-xs"
+                class="mb-[5px] size-7 shrink-0 text-xs"
                 fallback-class="bg-sidebar-accent text-sidebar-accent-foreground"
             />
             <InputGroup
-                class="min-w-0 flex-1 rounded-full border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
+                class="min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
                 data-testid="note-composer"
             >
-                <InputGroupInput
+                <InputGroupTextarea
                     ref="composerInput"
                     v-model="newBody"
-                    type="text"
-                    autocomplete="off"
+                    rows="1"
                     :placeholder="$t('notes.placeholder')"
                     :aria-label="$t('notes.placeholder')"
-                    class="ps-4"
+                    class="max-h-28 min-h-0 py-[7px] ps-4 leading-5"
                     data-testid="note-input"
                     @keydown="handleComposerKeydown"
                 />
-                <InputGroupAddon align="inline-end">
+                <InputGroupAddon align="inline-end" class="pb-1.5">
                     <InputGroupButton
                         variant="default"
                         size="icon-xs"

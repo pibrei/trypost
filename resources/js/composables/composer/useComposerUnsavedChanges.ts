@@ -13,11 +13,14 @@ interface ComposerUnsavedChangesOptions {
     composition: ReturnType<typeof usePostComposition>;
     /** The schedule picked in the composer: now, custom, next or top. */
     scheduleMode: () => string;
+    /** A file still uploading: closing would lose it before it joins the post. */
+    uploading: () => boolean;
 }
 
 /**
  * The composer's unsaved-changes guard: compares what saving would send with
- * what it would have sent when the post opened.
+ * what it would have sent when the post opened. A file still uploading counts
+ * too: it joins the post only once the upload finishes.
  *
  * Settings fill some values in on their own once their data loads (a renewed
  * music cover, the TikTok creator's limits), so the opened state is taken
@@ -72,10 +75,11 @@ export const useComposerUnsavedChanges = (
     const hasUnsavedChanges = (): boolean =>
         options.editingSavedPost &&
         options.isOpen() &&
-        interacted.value &&
         !saved.value &&
-        opened.value !== null &&
-        snapshot() !== opened.value;
+        (options.uploading() ||
+            (interacted.value &&
+                opened.value !== null &&
+                snapshot() !== opened.value));
 
     return {
         ...useUnsavedChanges(hasUnsavedChanges, options.close),

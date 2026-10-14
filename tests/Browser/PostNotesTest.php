@@ -73,7 +73,7 @@ test('adding a note from the popover shows it and emails the other members', fun
     Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($user->email));
 });
 
-test('the note composer enables send only with text and sends on Enter', function () {
+test('the note composer enables send only with text and sends on Enter but not Shift+Enter', function () {
     Mail::fake();
 
     $user = User::factory()->create();
@@ -105,6 +105,9 @@ test('the note composer enables send only with text and sends on Enter', functio
     $page->fill('@note-input', 'First line');
     $page->assertEnabled('@note-send');
 
+    $page->keys('@note-input', ['Shift+Enter']);
+
+    expect($page->script("document.querySelector('[data-testid=\"note-input\"]').value"))->toBe("First line\n");
     expect(PostNote::query()->where('post_id', $post->id)->exists())->toBeFalse();
 
     $page->keys('@note-input', ['Enter']);
