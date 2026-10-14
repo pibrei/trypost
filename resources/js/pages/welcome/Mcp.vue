@@ -211,7 +211,7 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="grid flex-1 lg:grid-cols-[22rem_minmax(0,1fr)]"
+                    class="grid flex-1 lg:grid-cols-[auto_minmax(0,1fr)]"
                 >
                 <div
                     class="flex flex-col gap-1 border-border bg-muted/40 p-2 max-md:hidden max-lg:border-b lg:border-e"
@@ -245,13 +245,13 @@ const goToSchedule = (): void => {
                             <component :is="benefit.icon" class="size-4" />
                         </span>
                         <span class="flex min-w-0 flex-col gap-0.5">
-                            <span class="text-sm font-medium text-foreground">
+                            <span class="text-sm font-medium whitespace-nowrap text-foreground">
                                 {{
                                     $t(`welcome.mcp.benefits.${benefit.key}.title`)
                                 }}
                             </span>
                             <span
-                                class="text-xs text-muted-foreground"
+                                class="text-xs whitespace-nowrap text-muted-foreground"
                             >
                                 {{
                                     $t(`welcome.mcp.benefits.${benefit.key}.hint`)
