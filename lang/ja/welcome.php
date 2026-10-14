@@ -58,7 +58,6 @@ return [
         'connect_ai' => 'AIを接続',
         'pick_ai' => 'どこでTryPostを使いますか？',
         'connect_other' => '他のアプリを接続',
-        'composer' => '何でも聞いてください',
         'connected' => ':clientに接続しました',
         'benefits' => [
             'schedule' => [

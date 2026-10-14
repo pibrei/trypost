@@ -58,7 +58,6 @@ return [
         'connect_ai' => 'AI 연결하기',
         'pick_ai' => '어디에서 TryPost를 사용할까요?',
         'connect_other' => '다른 앱 연결',
-        'composer' => '무엇이든 물어보세요',
         'connected' => ':client 연결됨',
         'benefits' => [
             'schedule' => [

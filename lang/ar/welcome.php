@@ -58,7 +58,6 @@ return [
         'connect_ai' => 'اربط ذكاءك الاصطناعي',
         'pick_ai' => 'أين تريد استخدام TryPost؟',
         'connect_other' => 'ربط تطبيق آخر',
-        'composer' => 'اسأل عن أي شيء',
         'connected' => 'تم ربط :client',
         'benefits' => [
             'schedule' => [

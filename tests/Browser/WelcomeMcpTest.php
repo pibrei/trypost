@@ -266,7 +266,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     expect(welcomeMcpTestIds($page, '[data-testid^=welcome-mcp-benefit-]:not([data-testid*=-icon-])'))->toBe(['welcome-mcp-benefit-ideas', 'welcome-mcp-benefit-schedule', 'welcome-mcp-benefit-queue', 'welcome-mcp-benefit-analytics']);
 
     $page->assertSee('Run your social media from a chat')
-        ->assertSeeIn('@welcome-mcp-composer', 'Ask anything')
+        ->assertMissing('@welcome-mcp-composer')
         ->assertVisible('@welcome-mcp-benefit-schedule')
         ->assertVisible('@welcome-mcp-benefit-ideas')
         ->click('@welcome-mcp-benefit-schedule');
@@ -410,11 +410,11 @@ test('on a phone the MCP step keeps the example and connects through an AI picke
     expect([
         'compact' => $actions['height'] < 120,
         'windowAboveFooter' => welcomeMcpRect($page, 'welcome-mcp-window')['bottom'] <= $actions['top'],
-        'composerHidden' => (float) welcomeMcpRect($page, 'welcome-mcp-composer')['height'] === 0.0,
         'connectBeforeSkip' => round($skip['top']) === round($connect['top']) && $connect['left'] < $skip['left'],
-    ])->toBe(['compact' => true, 'windowAboveFooter' => true, 'composerHidden' => true, 'connectBeforeSkip' => true]);
+    ])->toBe(['compact' => true, 'windowAboveFooter' => true, 'connectBeforeSkip' => true]);
 
-    $page->assertSeeIn('@welcome-mcp-connect-ai', 'Connect your AI')
+    $page->assertMissing('@welcome-mcp-composer')
+        ->assertSeeIn('@welcome-mcp-connect-ai', 'Connect your AI')
         ->assertVisible('@welcome-mcp-skip-link')
         ->assertMissing('@welcome-mcp-connect-claude')
         ->assertMissing('@welcome-mcp-connect-other')
@@ -549,7 +549,7 @@ test('the MCP examples rotate on their own until the user picks a tab', function
 
     $page->click('@welcome-mcp-benefit-queue')
         ->hover('@welcome-title');
-    welcomeMcpPause($page, 9000);
+    welcomeMcpPause($page, 4000);
 
     expect(welcomeMcpSelectedBenefit($page))->toBe('welcome-mcp-benefit-queue');
 
@@ -584,7 +584,7 @@ test('keyboard focus on the examples pauses the rotation', function () {
     waitForWelcomeMcpTestId($page, 'welcome-mcp-benefit-ideas');
 
     welcomeMcpFocus($page, 'welcome-mcp-benefit-ideas');
-    welcomeMcpPause($page, 9000);
+    welcomeMcpPause($page, 4000);
 
     expect(welcomeMcpSelectedBenefit($page))->toBe('welcome-mcp-benefit-ideas');
 

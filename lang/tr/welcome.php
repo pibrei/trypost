@@ -58,7 +58,6 @@ return [
         'connect_ai' => 'Yapay zekânı bağla',
         'pick_ai' => 'TryPost’u nerede kullanmak istersin?',
         'connect_other' => 'Başka uygulama bağla',
-        'composer' => 'Bir şey sor',
         'connected' => ':client bağlandı',
         'benefits' => [
             'schedule' => [

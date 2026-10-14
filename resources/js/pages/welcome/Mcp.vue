@@ -2,14 +2,11 @@
 import { Head, Link, router, useHttp, usePoll } from '@inertiajs/vue3';
 import {
     IconArrowRight,
-    IconArrowUp,
     IconBulb,
     IconCalendarPlus,
     IconChevronRight,
     IconCircleCheckFilled,
     IconListDetails,
-    IconMicrophone,
-    IconPlus,
     IconSparkles,
     IconTrendingUp,
 } from '@tabler/icons-vue';
@@ -72,7 +69,7 @@ const {
     pause: pauseBenefits,
     resume: resumeBenefits,
     stop: stopBenefits,
-} = useAutoRotate(benefits.length, 8000);
+} = useAutoRotate(benefits.length, 3000);
 
 /** Picking a tab means the user wants to read it: the rotation stops for good. */
 const chooseBenefit = (index: number): void => {
@@ -214,7 +211,7 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="grid flex-1 lg:grid-cols-[18rem_minmax(0,1fr)]"
+                    class="grid flex-1 lg:grid-cols-[22rem_minmax(0,1fr)]"
                 >
                 <div
                     class="flex flex-col gap-1 border-border bg-muted/40 p-2 max-md:hidden max-lg:border-b lg:border-e"
@@ -290,7 +287,7 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div class="flex flex-col">
-                    <div class="grid flex-1 px-4 pt-4 pb-3">
+                    <div class="grid flex-1 p-4">
                         <McpChatExample
                             v-for="benefit in benefits"
                             :key="benefit.key"
@@ -312,27 +309,6 @@ const goToSchedule = (): void => {
                                 :data-testid="`welcome-mcp-chat-${activeKey}`"
                             />
                         </Transition>
-                    </div>
-                    <div class="px-4 pb-4 max-sm:hidden" aria-hidden="true">
-                        <div
-                            class="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card ps-3 pe-1.5"
-                            data-testid="welcome-mcp-composer"
-                        >
-                            <IconPlus class="size-5 shrink-0 text-foreground" stroke-width="1.5" />
-                            <span
-                                class="min-w-0 flex-1 truncate text-sm text-muted-foreground"
-                            >
-                                {{ $t('welcome.mcp.composer') }}
-                            </span>
-                            <IconMicrophone
-                                class="size-4 shrink-0 text-muted-foreground"
-                            />
-                            <span
-                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground"
-                            >
-                                <IconArrowUp class="size-4" />
-                            </span>
-                        </div>
                     </div>
                 </div>
                 </div>

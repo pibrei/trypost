@@ -58,7 +58,6 @@ return [
         'connect_ai' => 'Connecter votre IA',
         'pick_ai' => 'Où voulez-vous utiliser TryPost ?',
         'connect_other' => 'Connecter une autre app',
-        'composer' => 'Posez votre question',
         'connected' => ':client est connecté',
         'benefits' => [
             'schedule' => [

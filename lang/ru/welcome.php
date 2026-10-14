@@ -58,7 +58,6 @@ return [
         'connect_ai' => 'Подключить ИИ',
         'pick_ai' => 'Где вы хотите использовать TryPost?',
         'connect_other' => 'Подключить другое приложение',
-        'composer' => 'Спросите что угодно',
         'connected' => ':client подключён',
         'benefits' => [
             'schedule' => [
